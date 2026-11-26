@@ -1131,20 +1131,22 @@ static void OPTIMIZE_O3 gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t 
 
     if (rdp.viewport_or_scissor_changed) {
         static uint32_t x_adjust_4by3_prev;
-        if (memcmp(&rdp.viewport, &rendering_state.viewport, sizeof(rdp.viewport)) != 0
-            || x_adjust_4by3_prev != gfx_current_dimensions.x_adjust_4by3) {
+        static uint32_t y_adjust_prev;
+        bool offsetChanged = x_adjust_4by3_prev != gfx_current_dimensions.x_adjust_4by3
+                          || y_adjust_prev != gfx_current_dimensions.y_adjust;
+        if (memcmp(&rdp.viewport, &rendering_state.viewport, sizeof(rdp.viewport)) != 0 || offsetChanged) {
             gfx_flush();
-            gfx_rapi->set_viewport(rdp.viewport.x + gfx_current_dimensions.x_adjust_4by3, rdp.viewport.y, rdp.viewport.width, rdp.viewport.height);
+            gfx_rapi->set_viewport(rdp.viewport.x + gfx_current_dimensions.x_adjust_4by3, rdp.viewport.y + gfx_current_dimensions.y_adjust, rdp.viewport.width, rdp.viewport.height);
             rendering_state.viewport = rdp.viewport;
         }
-        if (memcmp(&rdp.scissor, &rendering_state.scissor, sizeof(rdp.scissor)) != 0
-            || x_adjust_4by3_prev != gfx_current_dimensions.x_adjust_4by3) {
+        if (memcmp(&rdp.scissor, &rendering_state.scissor, sizeof(rdp.scissor)) != 0 || offsetChanged) {
             gfx_flush();
-            gfx_rapi->set_scissor(rdp.scissor.x + gfx_current_dimensions.x_adjust_4by3, rdp.scissor.y, rdp.scissor.width, rdp.scissor.height);
+            gfx_rapi->set_scissor(rdp.scissor.x + gfx_current_dimensions.x_adjust_4by3, rdp.scissor.y + gfx_current_dimensions.y_adjust, rdp.scissor.width, rdp.scissor.height);
             rendering_state.scissor = rdp.scissor;
         }
         rdp.viewport_or_scissor_changed = false;
         x_adjust_4by3_prev = gfx_current_dimensions.x_adjust_4by3;
+        y_adjust_prev = gfx_current_dimensions.y_adjust;
     }
 
     struct CombineMode* cm = &rdp.combine_mode;
@@ -2056,7 +2058,70 @@ static void gfx_sp_reset(void) {
     num_gfx_states = 0;
 }
 
+// split screen view selected with gfx_set_view (count 1 = whole window)
+static uint8_t sViewIndex = 0;
+static uint8_t sViewCount = 1;
+
+void gfx_split_screen_view_rect(uint8_t index, uint8_t count, uint32_t winW, uint32_t winH,
+                                uint32_t *x, uint32_t *y, uint32_t *w, uint32_t *h) {
+    *x = 0;
+    *y = 0;
+    *w = winW;
+    *h = winH;
+    if (count <= 1) { return; }
+    uint32_t topHeight = winH / 2;
+    if (count == 2) {
+        // stacked: the top view gets the first half, the bottom view the rest
+        *y = (index == 0) ? 0 : topHeight;
+        *h = (index == 0) ? topHeight : winH - topHeight;
+        return;
+    }
+    // 2x2 grid, left to right then top to bottom
+    uint32_t leftWidth = winW / 2;
+    uint32_t column = index % 2;
+    uint32_t row = index / 2;
+    *x = column ? leftWidth : 0;
+    *w = column ? winW - leftWidth : leftWidth;
+    *y = row ? topHeight : 0;
+    *h = row ? winH - topHeight : topHeight;
+}
+
+// Current drawing area: the whole window, or the selected split screen view, optionally pillarboxed to 4:3.
+static void gfx_compute_dimensions(void) {
+    uint32_t winW = 0, winH = 0;
+    gfx_wapi->get_dimensions(&winW, &winH);
+    if (winH == 0) { winH = 1; } // Avoid division by zero
+
+    uint32_t x, y, w, h;
+    gfx_split_screen_view_rect(sViewIndex, sViewCount, winW, winH, &x, &y, &w, &h);
+    if (h == 0) { h = 1; }
+
+    gfx_current_dimensions.width = w;
+    gfx_current_dimensions.height = h;
+    gfx_current_dimensions.x_adjust_4by3 = x;
+    gfx_current_dimensions.y_adjust = winH - (y + h);
+    if (configForce4By3 && ((4.0f / 3.0f) * h) < w) {
+        gfx_current_dimensions.x_adjust_4by3 += (w - (4.0f / 3.0f) * h) / 2;
+        gfx_current_dimensions.width = (4.0f / 3.0f) * h;
+    }
+    gfx_current_dimensions.aspect_ratio = ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
+    gfx_current_dimensions.x_adjust_ratio = (4.0f / 3.0f) / gfx_current_dimensions.aspect_ratio;
+}
+
+void gfx_set_view(uint8_t index, uint8_t count) {
+    sViewIndex = (count > 1 && index < count) ? index : 0;
+    sViewCount = (count > 1) ? count : 1;
+    gfx_compute_dimensions();
+    rdp.viewport_or_scissor_changed = true;
+}
+
 void gfx_get_dimensions(uint32_t *width, uint32_t *height) {
+    // inside a split screen view, the view is the screen
+    if (sViewCount > 1) {
+        *width = gfx_current_dimensions.width;
+        *height = gfx_current_dimensions.height;
+        return;
+    }
     gfx_wapi->get_dimensions(width, height);
     if (configForce4By3) {
         *width = gfx_current_dimensions.aspect_ratio * *height;
@@ -2085,18 +2150,10 @@ void gfx_start_frame(void) {
         rdp.loaded_texture[1].size_bytes = 0;
     }
     gfx_wapi->handle_events();
-    gfx_wapi->get_dimensions(&gfx_current_dimensions.width, &gfx_current_dimensions.height);
-    if (gfx_current_dimensions.height == 0) {
-        // Avoid division by zero
-        gfx_current_dimensions.height = 1;
-    }
-    if (configForce4By3
-        && ((4.0f / 3.0f) * gfx_current_dimensions.height) < gfx_current_dimensions.width) {
-        gfx_current_dimensions.x_adjust_4by3 = (gfx_current_dimensions.width - (4.0f / 3.0f) * gfx_current_dimensions.height) / 2;
-        gfx_current_dimensions.width = (4.0f / 3.0f) * gfx_current_dimensions.height;
-    } else { gfx_current_dimensions.x_adjust_4by3 = 0; }
-    gfx_current_dimensions.aspect_ratio = ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
-    gfx_current_dimensions.x_adjust_ratio = (4.0f / 3.0f) / gfx_current_dimensions.aspect_ratio;
+    // every frame starts on the whole window; the display list selects split screen views itself
+    sViewIndex = 0;
+    sViewCount = 1;
+    gfx_compute_dimensions();
 }
 
 void gfx_run(Gfx *commands) {
@@ -2488,6 +2545,10 @@ void OPTIMIZE_O3 ext_gfx_run_dl(Gfx* cmd) {
             break;
         case G_STATE_EXT:
             gfx_sp_load_or_save_state(C0(16, 8), cmd->words.w1);
+            break;
+        case G_VIEW_EXT:
+            gfx_flush();
+            gfx_set_view(C0(8, 8), C0(0, 8));
             break;
     }
 }

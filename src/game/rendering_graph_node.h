@@ -43,6 +43,12 @@ extern f32 gOverrideFar;
 
 void geo_process_node_and_siblings(struct GraphNode *firstNode);
 void geo_process_root(struct GraphNodeRoot *node, Vp *b, Vp *c, s32 clearColor);
+// Starts a game tick's drawing of `viewCount` split screen views (1 without split screen). Each view then calls
+// geo_process_root() with its player in scope.
+void geo_begin_views(u8 viewCount);
+// Skybox buffers of the view being drawn (refilled in place at interpolated frames).
+Gfx **gBackgroundSkyboxGfxForView(void);
+Mtx **gBackgroundSkyboxMtxForView(void);
 
 struct GraphNodeInterpData {
     Vec3s translation;

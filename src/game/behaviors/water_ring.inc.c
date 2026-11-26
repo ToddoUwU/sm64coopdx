@@ -201,7 +201,8 @@ void bhv_jet_stream_ring_spawner_loop(void) {
         case JS_RING_SPAWNER_ACT_ACTIVE:
             water_ring_spawner_act_inactive();
 
-            if (o->oWaterRingSpawnerRingsCollected == 5 && o->globalPlayerIndex == gNetworkPlayerLocal->globalIndex) {
+            if (o->oWaterRingSpawnerRingsCollected == 5 && network_player_from_global_index(o->globalPlayerIndex) != NULL
+                && is_local_player(network_player_from_global_index(o->globalPlayerIndex)->localIndex)) {
                 spawn_mist_particles();
 
                 f32* starPos = gLevelValues.starPositions.JetstreamRingStarPos;

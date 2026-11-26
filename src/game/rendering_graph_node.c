@@ -6,6 +6,8 @@
 #include "data/dynos_cmap.cpp.h"
 #include "game_init.h"
 #include "gfx_dimensions.h"
+#include "local_players.h"
+#include "pc/gfx/gfx_pc.h"
 #include "main.h"
 #include "memory.h"
 #include "print.h"
@@ -62,8 +64,9 @@ Mat4 gMatStackPrev[MATRIX_STACK_SIZE] = {};
 Mtx *gMatStackFixed[MATRIX_STACK_SIZE] = { 0 };
 Mtx *gMatStackPrevFixed[MATRIX_STACK_SIZE] = { 0 };
 
-s32 gCamSkipInterp = 0;
-Vec3f gCamSkipInterpDisplacement = { 0 };
+// set by skip_camera_interpolation() for the camera of the player in scope
+s32 gCamSkipInterps[MAX_LOCAL_PLAYERS] = { 0 };
+#define gCamSkipInterp (gCamSkipInterps[gCurrLocalPlayer])
 
 u8 sUsingCamSpace = FALSE;
 Mtx sPrevCamTranf, sCurrCamTranf = {
@@ -212,23 +215,72 @@ u16 gAreaUpdateCounter = 0;
 LookAt lookAt;
 #endif
 
-static struct GraphNodePerspective *sPerspectiveNode = NULL;
-static Gfx* sPerspectivePos   = NULL;
-static Mtx* sPerspectiveMtx   = NULL;
-static f32 sPerspectiveAspect = 0;
+// Interpolation records of one split screen view. Every view draws the area graph once per game tick; these
+// records say how to redraw that view's perspective, viewport, skybox and camera at the in-between frames.
+// The area has a single camera, perspective and background node shared by all views, so the parts of those
+// nodes' state that differ per view are kept here and loaded into the node while its view renders.
+struct ViewInterp {
+    struct GraphNodePerspective *perspectiveNode;
+    Gfx *perspectivePos;
+    Mtx *perspectiveMtx;
+    f32 perspectiveAspect;
+    f32 fov;
+    f32 prevFov;
 
-static Vp*  sViewport        = NULL;
-static Gfx* sViewportPos     = NULL;
-static Gfx* sViewportClipPos = NULL;
-static Vp   sViewportPrev    = { 0 };
-static Vp   sViewportInterp  = { 0 };
+    Vp *viewport;
+    Gfx *viewportPos;
+    Gfx *viewportClipPos;
+    Vp viewportPrev;
+    Vp viewportInterp;
 
-Gfx* gBackgroundSkyboxGfx = NULL;
-Mtx* gBackgroundSkyboxMtx = NULL;
+    Gfx *backgroundSkyboxGfx;
+    Mtx *backgroundSkyboxMtx;
+    struct GraphNodeBackground *backgroundNode;
+    struct GraphNodeRoot *backgroundNodeRoot;
+    Vec3f backgroundPrevCameraPos;
+    Vec3f backgroundPrevCameraFocus;
+    u32 backgroundPrevCameraTimestamp;
 
-static struct GraphNodeBackground* sBackgroundNode = NULL;
-static struct GraphNodeRoot* sBackgroundNodeRoot = NULL;
-static struct GraphNodeCamera* sCameraNode = NULL;
+    struct GraphNodeCamera *cameraNode;
+    struct GraphNodeCamera *cameraStateNode; // camera node the saved state below belongs to
+    Vec3f cameraPos;
+    Vec3f cameraFocus;
+    Vec3f cameraPrevPos;
+    Vec3f cameraPrevFocus;
+    u32 cameraPrevTimestamp;
+    s16 cameraRoll;
+    // copies of the view's camera matrices (the matrix stack is reused by the next view)
+    Mat4 cameraMatrix;
+    Mat4 cameraMatrixPrev;
+    bool cameraMatricesValid;
+    Vec3f camSkipInterpDisplacement;
+};
+static struct ViewInterp sViewInterps[MAX_LOCAL_PLAYERS] = { 0 };
+// how many views were drawn in the current game tick
+static u8 sInterpViewCount = 1;
+
+// the view being drawn (or patched) is the player in scope
+#define sView                       (sViewInterps[gCurrLocalPlayer])
+#define sPerspectiveNode            (sView.perspectiveNode)
+#define sPerspectivePos             (sView.perspectivePos)
+#define sPerspectiveMtx             (sView.perspectiveMtx)
+#define sPerspectiveAspect          (sView.perspectiveAspect)
+#define sViewport                   (sView.viewport)
+#define sViewportPos                (sView.viewportPos)
+#define sViewportClipPos            (sView.viewportClipPos)
+#define sViewportPrev               (sView.viewportPrev)
+#define sViewportInterp             (sView.viewportInterp)
+#define sBackgroundNode             (sView.backgroundNode)
+#define sBackgroundNodeRoot         (sView.backgroundNodeRoot)
+#define sCameraNode                 (sView.cameraNode)
+#define gCamSkipInterpDisplacement  (sView.camSkipInterpDisplacement)
+
+Gfx **gBackgroundSkyboxGfxForView(void) { return &sView.backgroundSkyboxGfx; }
+Mtx **gBackgroundSkyboxMtxForView(void) { return &sView.backgroundSkyboxMtx; }
+
+// Per-node "previous tick" state (positions, angles, scales, animation frames) is read by every view but only
+// written by the last view of the tick, so every view interpolates from the same history.
+static bool sInterpCommit = true;
 
 static struct GrowingArray* sShadowInterp = NULL;
 struct ShadowInterp* gShadowInterpCurrent = NULL;
@@ -240,6 +292,7 @@ struct MtxInterp {
     void *displayList;
     Mtx interp;
     u8 usingCamSpace;
+    u8 view; // split screen view whose camera this matrix is relative to
 };
 
 static struct GrowingArray* sMtxTbl = NULL;
@@ -279,11 +332,9 @@ static void reset_mtx(void) {
     init_mtx();
 }
 
-void patch_mtx_before(void) {
-    init_mtx();
-
+static void patch_mtx_before_for_scoped_view(void) {
     if (sPerspectiveNode != NULL) {
-        sPerspectiveNode->prevFov = sPerspectiveNode->fov;
+        sView.prevFov = sView.fov;
         sPerspectiveNode = NULL;
     }
 
@@ -295,21 +346,29 @@ void patch_mtx_before(void) {
     }
 
     if (sBackgroundNode != NULL) {
-        vec3f_copy(sBackgroundNode->prevCameraPos, gLakituState.pos);
-        vec3f_copy(sBackgroundNode->prevCameraFocus, gLakituState.focus);
-        sBackgroundNode->prevCameraTimestamp = gGlobalTimer;
+        vec3f_copy(sView.backgroundPrevCameraPos, gLakituState.pos);
+        vec3f_copy(sView.backgroundPrevCameraFocus, gLakituState.focus);
+        sView.backgroundPrevCameraTimestamp = gGlobalTimer;
         sBackgroundNode = NULL;
-        gBackgroundSkyboxGfx = NULL;
+        sView.backgroundSkyboxGfx = NULL;
     }
 }
 
-void patch_mtx_interpolated(f32 delta) {
+void patch_mtx_before(void) {
+    init_mtx();
+    for (u8 v = 0; v < sInterpViewCount; v++) {
+        LOCAL_PLAYER_SCOPE(v);
+        patch_mtx_before_for_scoped_view();
+    }
+}
+
+static void patch_view_interpolated(f32 delta) {
     if (sPerspectiveNode != NULL) {
         if (gCamSkipInterp) {
-            sPerspectiveNode->prevFov = sPerspectiveNode->fov;
+            sView.prevFov = sView.fov;
         }
         u16 perspNorm;
-        f32 fovInterpolated = delta_interpolate_f32(sPerspectiveNode->prevFov, sPerspectiveNode->fov, delta);
+        f32 fovInterpolated = delta_interpolate_f32(sView.prevFov, sView.fov, delta);
         f32 near = get_first_person_enabled() ? 1.f : replace_value_if_not_zero(MIN(sPerspectiveNode->near, gProjectionMaxNearValue), gOverrideNear);
         f32 far = replace_value_if_not_zero(sPerspectiveNode->far, gOverrideFar);
 
@@ -342,14 +401,50 @@ void patch_mtx_interpolated(f32 delta) {
         vec3f_copy(posCopy, gLakituState.pos);
         vec3f_copy(focusCopy, gLakituState.focus);
         if (gGlobalTimer != gLakituState.skipCameraInterpolationTimestamp) {
-            delta_interpolate_vec3f(gLakituState.pos, sBackgroundNode->prevCameraPos, posCopy, delta);
-            delta_interpolate_vec3f(gLakituState.focus, sBackgroundNode->prevCameraFocus, focusCopy, delta);
+            delta_interpolate_vec3f(gLakituState.pos, sView.backgroundPrevCameraPos, posCopy, delta);
+            delta_interpolate_vec3f(gLakituState.focus, sView.backgroundPrevCameraFocus, focusCopy, delta);
         }
+        // the view's skybox is regenerated in place (gfx_set_view gives it the view's aspect ratio)
+        u8 viewCount = split_screen_active() ? gLocalPlayerCount : 1;
+        gfx_set_view(gCurrLocalPlayer, viewCount);
         sBackgroundNode->fnNode.func(GEO_CONTEXT_RENDER, &sBackgroundNode->fnNode.node, NULL);
+        gfx_set_view(0, 1);
 
         vec3f_copy(gLakituState.pos, posCopy);
         vec3f_copy(gLakituState.focus, focusCopy);
         gCurGraphNodeRoot = rootCopy;
+    }
+}
+
+// Interpolated camera transform of the scoped view (out of / back into its camera space).
+struct ViewCamInterp {
+    bool valid;
+    Mtx camTranfInv;
+    Mtx prevCamTranfInv;
+    Mtx camInterp;
+};
+
+static void compute_view_camera_interpolation(struct ViewCamInterp *out, f32 delta) {
+    out->valid = sView.cameraMatricesValid;
+    if (!out->valid) { return; }
+    // compute inverse camera matrix to transform out of camera space later
+    mtxf_inverse(out->camTranfInv.m, sView.cameraMatrix);
+    mtxf_inverse(out->prevCamTranfInv.m, sView.cameraMatrixPrev);
+
+    // use the view's stored camera information to calculate the interpolated camera transform
+    Vec3f posInterp, focusInterp;
+    delta_interpolate_vec3f(posInterp, sView.cameraPrevPos, sView.cameraPos, delta);
+    delta_interpolate_vec3f(focusInterp, sView.cameraPrevFocus, sView.cameraFocus, delta);
+    mtxf_lookat(out->camInterp.m, posInterp, focusInterp, sView.cameraRoll);
+    mtxf_to_mtx(&out->camInterp, out->camInterp.m);
+}
+
+void patch_mtx_interpolated(f32 delta) {
+    struct ViewCamInterp camInterps[MAX_LOCAL_PLAYERS];
+    for (u8 v = 0; v < sInterpViewCount; v++) {
+        LOCAL_PLAYER_SCOPE(v);
+        patch_view_interpolated(delta);
+        compute_view_camera_interpolation(&camInterps[v], delta);
     }
 
     struct GraphNodeObject* savedObj = gCurGraphNodeObject;
@@ -368,50 +463,35 @@ void patch_mtx_interpolated(f32 delta) {
     }
     gCurGraphNodeObject = savedObj;
 
-    // calculate outside of for loop to reduce overhead
     // technically this is improper use of mtxf functions, but coop doesn't target N64
-    Mtx camTranfInv, prevCamTranfInv;
-    Mtx camInterp;
-    bool translateCamSpace = (sMtxTbl->count > 0) && sCameraNode && (sCameraNode->matrixPtr != NULL) && (sCameraNode->matrixPtrPrev != NULL);
-    if (translateCamSpace) {
-        // compute inverse camera matrix to transform out of camera space later
-        mtxf_inverse(camTranfInv.m, *sCameraNode->matrixPtr);
-        mtxf_inverse(prevCamTranfInv.m, *sCameraNode->matrixPtrPrev);
-
-        // use camera node's stored information to calculate interpolated camera transform
-        Vec3f posInterp, focusInterp;
-        delta_interpolate_vec3f(posInterp, sCameraNode->prevPos, sCameraNode->pos, delta);
-        delta_interpolate_vec3f(focusInterp, sCameraNode->prevFocus, sCameraNode->focus, delta);
-        mtxf_lookat(camInterp.m, posInterp, focusInterp, sCameraNode->roll);
-        mtxf_to_mtx(&camInterp, camInterp.m);
-    }
-
     for (u32 i = 0; i < sMtxTbl->count; i++) {
         struct MtxInterp *interp = sMtxTbl->buffer[i];
         Gfx *pos = interp->pos;
         Mtx *srcMtx = interp->mtx;
         Mtx *srcMtxPrev = interp->mtxPrev;
+        struct ViewCamInterp *camInterp = &camInterps[interp->view < sInterpViewCount ? interp->view : 0];
+        bool translateCamSpace = camInterp->valid;
 
         if (interp->usingCamSpace && translateCamSpace) {
             // transform out of camera space so the matrix can interp in world space
             Mtx bufMtx, bufMtxPrev;
             mtxf_copy(bufMtx.m, srcMtx->m);
             mtxf_copy(bufMtxPrev.m, srcMtxPrev->m);
-            mtxf_mul(bufMtx.m, bufMtx.m, camTranfInv.m);
-            mtxf_mul(bufMtxPrev.m, bufMtxPrev.m, prevCamTranfInv.m);
+            mtxf_mul(bufMtx.m, bufMtx.m, camInterp->camTranfInv.m);
+            mtxf_mul(bufMtxPrev.m, bufMtxPrev.m, camInterp->prevCamTranfInv.m);
             srcMtx = &bufMtx;
             srcMtxPrev = &bufMtxPrev;
         }
         delta_interpolate_mtx(&interp->interp, srcMtxPrev, srcMtx, delta);
-        if (interp->usingCamSpace) {
+        if (interp->usingCamSpace && translateCamSpace) {
             // transform back to camera space, respecting camera interpolation
-            mtxf_mul(interp->interp.m, interp->interp.m, camInterp.m);
+            mtxf_mul(interp->interp.m, interp->interp.m, camInterp->camInterp.m);
         }
         gSPMatrix(pos++, VIRTUAL_TO_PHYSICAL(&interp->interp),
                   G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
     }
 
-    gCamSkipInterp = 0;
+    for (u8 v = 0; v < MAX_LOCAL_PLAYERS; v++) { gCamSkipInterps[v] = 0; }
 }
 
 /**
@@ -481,7 +561,7 @@ void geo_clear_interp_data() {
     struct GraphNodeInterpData *interp = geo_get_interp_data(node, gCurGraphNodeObject); \
     geo_init_or_update_interp_data(interp, translation, rotation, scale, false); \
     { __VA_ARGS__; } \
-    geo_init_or_update_interp_data(interp, translation, rotation, scale, true); \
+    if (sInterpCommit) { geo_init_or_update_interp_data(interp, translation, rotation, scale, true); } \
 }
 
 /**
@@ -543,6 +623,7 @@ static void geo_process_master_list_sub(struct GraphNodeMasterList *node) {
                 interp->mtxPrev = currList->transformPrev;
                 interp->displayList = currList->displayList;
                 interp->usingCamSpace = currList->usingCamSpace;
+                interp->view = gCurrLocalPlayer;
 
                 gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(currList->transformPrev),
                           G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
@@ -660,7 +741,12 @@ static void geo_process_perspective(struct GraphNodePerspective *node) {
     // "infinite" draw distance
     if (gOverrideFar == 0 && configDrawDistance == 6) { far = max(far, MAX_FAR_PLANE_DIST); }
 
-    guPerspective(mtx, &perspNorm, node->prevFov, aspect, near, far, 1.0f);
+    // this view's fov history (the perspective node is shared by every view)
+    if (sView.prevFov == 0) { sView.prevFov = node->fov; }
+    sView.fov = node->fov;
+    node->prevFov = sView.prevFov;
+
+    guPerspective(mtx, &perspNorm, sView.prevFov, aspect, near, far, 1.0f);
 
     sPerspectiveNode = node;
     sPerspectiveMtx = mtx;
@@ -723,6 +809,13 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
     Mtx *rollMtx = alloc_display_list(sizeof(*rollMtx));
     if (rollMtx == NULL) { return; }
 
+    // the area's camera node is shared by every view: give it this view's state
+    if (sView.cameraStateNode == node) {
+        vec3f_copy(node->pos, sView.cameraPos);
+        vec3f_copy(node->focus, sView.cameraFocus);
+        node->prevTimestamp = sView.cameraPrevTimestamp;
+    }
+
     vec3f_copy(node->prevPos, node->pos);
     vec3f_copy(node->prevFocus, node->focus);
 
@@ -757,6 +850,18 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
     }
     node->prevTimestamp = gGlobalTimer;
     sCameraNode = node;
+
+    // remember this view's camera for the next tick and for the in-between frames
+    vec3f_copy(sView.cameraPos, node->pos);
+    vec3f_copy(sView.cameraFocus, node->focus);
+    vec3f_copy(sView.cameraPrevPos, node->prevPos);
+    vec3f_copy(sView.cameraPrevFocus, node->prevFocus);
+    sView.cameraPrevTimestamp = node->prevTimestamp;
+    sView.cameraStateNode = node;
+    sView.cameraRoll = node->roll;
+    mtxf_copy(sView.cameraMatrix, gMatStack[gMatStackIndex + 1]);
+    mtxf_copy(sView.cameraMatrixPrev, gMatStackPrev[gMatStackIndex + 1]);
+    sView.cameraMatricesValid = true;
 
     // Increment the matrix stack, If we fail to do so. Just return.
     if (!increment_mat_stack()) { return; }
@@ -1068,8 +1173,8 @@ static void geo_process_background(struct GraphNodeBackground *node) {
         vec3f_copy(posCopy, gLakituState.pos);
         vec3f_copy(focusCopy, gLakituState.focus);
         if (gGlobalTimer != gLakituState.skipCameraInterpolationTimestamp) {
-            vec3f_copy(gLakituState.pos, node->prevCameraPos);
-            vec3f_copy(gLakituState.focus, node->prevCameraFocus);
+            vec3f_copy(gLakituState.pos, sView.backgroundPrevCameraPos);
+            vec3f_copy(gLakituState.focus, sView.backgroundPrevCameraFocus);
             sBackgroundNode = node;
             sBackgroundNodeRoot = gCurGraphNodeRoot;
         }
@@ -1257,10 +1362,12 @@ void geo_set_animation_globals(struct AnimInfo *node, s32 hasAnimation) {
     } else {
         gPrevAnimFrame = node->animFrame;
     }
-    node->prevAnimPtr = anim;
-    node->prevAnimID = node->animID;
-    node->prevAnimFrame = node->animFrame;
-    node->prevAnimFrameTimestamp = gGlobalTimer;
+    if (sInterpCommit) {
+        node->prevAnimPtr = anim;
+        node->prevAnimID = node->animID;
+        node->prevAnimFrame = node->animFrame;
+        node->prevAnimFrameTimestamp = gGlobalTimer;
+    }
 
     gCurAnimEnabled = (anim->flags & ANIM_FLAG_5) == 0;
     gCurrAnimAttribute = segmented_to_virtual((void *) anim->index);
@@ -1337,8 +1444,10 @@ static void geo_process_shadow(struct GraphNodeShadow *node) {
                 vec3f_copy(shadowPosPrev, gCurGraphNodeObject->shadowPos);
             }
 
-            vec3f_copy(gCurGraphNodeHeldObject->prevShadowPos, gCurGraphNodeObject->shadowPos);
-            gCurGraphNodeHeldObject->prevShadowPosTimestamp = gGlobalTimer;
+            if (sInterpCommit) {
+                vec3f_copy(gCurGraphNodeHeldObject->prevShadowPos, gCurGraphNodeObject->shadowPos);
+                gCurGraphNodeHeldObject->prevShadowPosTimestamp = gGlobalTimer;
+            }
         } else {
             if (gGlobalTimer == gCurGraphNodeObject->prevShadowPosTimestamp + 1 &&
                 gGlobalTimer != gCurGraphNodeObject->skipInterpolationTimestamp &&
@@ -1347,8 +1456,10 @@ static void geo_process_shadow(struct GraphNodeShadow *node) {
             } else {
                 vec3f_copy(shadowPosPrev, gCurGraphNodeObject->shadowPos);
             }
-            vec3f_copy(gCurGraphNodeObject->prevShadowPos, gCurGraphNodeObject->shadowPos);
-            gCurGraphNodeObject->prevShadowPosTimestamp = gGlobalTimer;
+            if (sInterpCommit) {
+                vec3f_copy(gCurGraphNodeObject->prevShadowPos, gCurGraphNodeObject->shadowPos);
+                gCurGraphNodeObject->prevShadowPosTimestamp = gGlobalTimer;
+            }
         }
 
         struct ShadowInterp* interp = growing_array_alloc(sShadowInterp, sizeof(struct ShadowInterp));
@@ -1548,8 +1659,10 @@ static void geo_process_object(struct Object *node) {
                 mtxf_mul(gMatStackPrev[gMatStackIndex + 1], (void *) node->header.gfx.throwMatrix, gMatStackPrev[gMatStackIndex]);
             }
 
-            mtxf_copy(node->header.gfx.prevThrowMatrix, *node->header.gfx.throwMatrix);
-            node->header.gfx.prevThrowMatrixTimestamp = gGlobalTimer;
+            if (sInterpCommit) {
+                mtxf_copy(node->header.gfx.prevThrowMatrix, *node->header.gfx.throwMatrix);
+                node->header.gfx.prevThrowMatrixTimestamp = gGlobalTimer;
+            }
 
         } else if (node->header.gfx.node.flags & GRAPH_RENDER_CYLBOARD && !noBillboard) {
 
@@ -1563,8 +1676,10 @@ static void geo_process_object(struct Object *node) {
                 vec3f_copy(posPrev, node->header.gfx.pos);
             }
 
-            vec3f_copy(node->header.gfx.prevPos, node->header.gfx.pos);
-            node->header.gfx.prevTimestamp = gGlobalTimer;
+            if (sInterpCommit) {
+                vec3f_copy(node->header.gfx.prevPos, node->header.gfx.pos);
+                node->header.gfx.prevTimestamp = gGlobalTimer;
+            }
             mtxf_cylboard(gMatStack[gMatStackIndex + 1], gMatStack[gMatStackIndex], node->header.gfx.pos, gCurGraphNodeCamera->roll);
             mtxf_cylboard(gMatStackPrev[gMatStackIndex + 1], gMatStackPrev[gMatStackIndex], posPrev, gCurGraphNodeCamera->roll);
 
@@ -1580,8 +1695,10 @@ static void geo_process_object(struct Object *node) {
                 vec3f_copy(posPrev, node->header.gfx.pos);
             }
 
-            vec3f_copy(node->header.gfx.prevPos, node->header.gfx.pos);
-            node->header.gfx.prevTimestamp = gGlobalTimer;
+            if (sInterpCommit) {
+                vec3f_copy(node->header.gfx.prevPos, node->header.gfx.pos);
+                node->header.gfx.prevTimestamp = gGlobalTimer;
+            }
             mtxf_billboard(gMatStack[gMatStackIndex + 1], gMatStack[gMatStackIndex], node->header.gfx.pos, gCurGraphNodeCamera->roll);
             mtxf_billboard(gMatStackPrev[gMatStackIndex + 1], gMatStackPrev[gMatStackIndex], posPrev, gCurGraphNodeCamera->roll);
 
@@ -1600,9 +1717,11 @@ static void geo_process_object(struct Object *node) {
                 vec3s_copy(anglePrev, node->header.gfx.angle);
             }
 
-            vec3f_copy(node->header.gfx.prevPos, node->header.gfx.pos);
-            vec3s_copy(node->header.gfx.prevAngle, node->header.gfx.angle);
-            node->header.gfx.prevTimestamp = gGlobalTimer;
+            if (sInterpCommit) {
+                vec3f_copy(node->header.gfx.prevPos, node->header.gfx.pos);
+                vec3s_copy(node->header.gfx.prevAngle, node->header.gfx.angle);
+                node->header.gfx.prevTimestamp = gGlobalTimer;
+            }
             mtxf_rotate_zxy_and_translate(mtxf, node->header.gfx.pos, node->header.gfx.angle);
             mtxf_mul(gMatStack[gMatStackIndex + 1], mtxf, gMatStack[gMatStackIndex]);
             mtxf_rotate_zxy_and_translate(mtxf, posPrev, anglePrev);
@@ -1617,8 +1736,10 @@ static void geo_process_object(struct Object *node) {
             vec3f_copy(scalePrev, node->header.gfx.scale);
         }
 
-        vec3f_copy(node->header.gfx.prevScale, node->header.gfx.scale);
-        node->header.gfx.prevScaleTimestamp = gGlobalTimer;
+        if (sInterpCommit) {
+            vec3f_copy(node->header.gfx.prevScale, node->header.gfx.scale);
+            node->header.gfx.prevScaleTimestamp = gGlobalTimer;
+        }
 
         mtxf_scale_vec3f(gMatStack[gMatStackIndex + 1], gMatStack[gMatStackIndex + 1],
                          node->header.gfx.scale);
@@ -1729,8 +1850,10 @@ void geo_process_held_object(struct GraphNodeHeldObject *node) {
             vec3f_copy(scalePrev, node->objNode->header.gfx.scale);
             vec3s_copy(anglePrev, node->objNode->header.gfx.angle);
         }
-        vec3f_copy(node->objNode->header.gfx.prevScale, node->objNode->header.gfx.scale);
-        node->objNode->header.gfx.prevScaleTimestamp = gGlobalTimer;
+        if (sInterpCommit) {
+            vec3f_copy(node->objNode->header.gfx.prevScale, node->objNode->header.gfx.scale);
+            node->objNode->header.gfx.prevScaleTimestamp = gGlobalTimer;
+        }
 
         if (node->objNode->header.gfx.sharedChild->extraFlags & GRAPH_EXTRA_ROTATE_HELD) {
             vec3s_copy(node->objNode->header.gfx.prevAngle, node->objNode->header.gfx.angle);
@@ -2027,7 +2150,8 @@ void geo_process_node_and_siblings(struct GraphNode *firstNode) {
     } while (iterateChildren && curGraphNode && (curGraphNode = curGraphNode->next) != firstNode);
 }
 
-static void geo_clear_interp_variables(void) {
+// Interpolation records of the view about to be drawn (the player in scope).
+static void geo_clear_view_interp_variables(void) {
     sPerspectiveNode = NULL;
     sPerspectivePos   = NULL;
     sPerspectiveMtx   = NULL;
@@ -2038,17 +2162,22 @@ static void geo_clear_interp_variables(void) {
     sViewportClipPos = NULL;
 
     sBackgroundNode = NULL;
-    gBackgroundSkyboxGfx = NULL;
-    gBackgroundSkyboxMtx = NULL;
+    sView.backgroundSkyboxGfx = NULL;
+    sView.backgroundSkyboxMtx = NULL;
     sBackgroundNodeRoot = NULL;
+
+    sCameraNode = NULL;
+    sView.cameraMatricesValid = false;
+    gCurGraphNodeProcessingObject = NULL;
+    gCurGraphNodeMarioState = NULL;
+}
+
+void geo_begin_views(u8 viewCount) {
+    sInterpViewCount = (viewCount >= 1 && viewCount <= MAX_LOCAL_PLAYERS) ? viewCount : 1;
 
     sShadowInterp->count = 0;
     gShadowInterpCurrent = NULL;
-
     sMtxTbl->count = 0;
-    sCameraNode = NULL;
-    gCurGraphNodeProcessingObject = NULL;
-    gCurGraphNodeMarioState = NULL;
 }
 
 /**
@@ -2057,8 +2186,9 @@ static void geo_clear_interp_variables(void) {
  * to set up the projection and draw display lists.
  */
 void geo_process_root(struct GraphNodeRoot *node, Vp *b, Vp *c, s32 clearColor) {
-    // clear interp stuff
-    geo_clear_interp_variables();
+    // clear interp stuff of this view; only the last view of the tick updates per-node interpolation history
+    geo_clear_view_interp_variables();
+    sInterpCommit = (gCurrLocalPlayer + 1 >= sInterpViewCount);
 
     if (node->node.flags & GRAPH_RENDER_ACTIVE) {
         gDisplayListHeap = growing_pool_init(gDisplayListHeap, DISPLAY_LIST_HEAP_SIZE);

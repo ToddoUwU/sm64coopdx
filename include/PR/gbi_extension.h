@@ -223,6 +223,21 @@
     gsMoveWd(G_MW_FX, G_MWO_FRESNEL, \
         (_SHIFTL((scale), 16, 16) | _SHIFTL((offset), 0, 16)))
 
+////////////////
+// G_VIEW_EXT //
+////////////////
+
+// Selects a split screen view: until the next G_VIEW_EXT, drawing goes to view `index` of `count` views of the
+// window as if that rectangle were the whole window (count 1 = the whole window).
+#define G_VIEW_EXT 0x14
+
+#define gSPView(pkt, index, count) \
+{ \
+    Gfx *_g = (Gfx *)(pkt); \
+    _g->words.w0 = _SHIFTL(G_VIEW_EXT,24,8)|_SHIFTL((index),8,8)|_SHIFTL((count),0,8); \
+    _g->words.w1 = 0; \
+}
+
 /////////////////
 // G_STATE_EXT //
 /////////////////

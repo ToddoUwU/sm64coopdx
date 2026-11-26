@@ -30,6 +30,8 @@
 #include "pc/djui/djui_panel_pause.h"
 #include "pc/nametags.h"
 #include "engine/lighting_engine.h"
+#include "local_players.h"
+#include "pc/gfx/gfx_pc.h"
 
 struct SpawnInfo gPlayerSpawnInfos[MAX_PLAYERS];
 struct Area gAreaData[MAX_AREAS];
@@ -447,37 +449,79 @@ void play_transition_after_delay(s16 transType, s16 time, u8 red, u8 green, u8 b
     play_transition(transType, time, red, green, blue);
 }
 
+// Selects split screen view `view` of `viewCount` for the display list being built: drawing goes to that
+// view's rectangle of the window, and aspect-dependent code (HUD edges, culling, skybox) sees the view's shape.
+static void select_render_view(u8 view, u8 viewCount) {
+    gfx_set_view(view, viewCount);
+    gSPView(gDisplayListHead++, view, viewCount);
+    gSPViewport(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(&gViewportFullscreen));
+    gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
+                  SCREEN_HEIGHT - BORDER_HEIGHT);
+}
+
+// The world and everything that belongs to one player's screen: their HUD, the Lua HUD hooks, name tags,
+// queued HUD text and, when they opened it, the dialog box.
+static void render_game_view(void) {
+    geo_process_root(gCurrentArea->root, gViewportOverride, gViewportClip, gFBSetColor);
+
+    gSPViewport(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(&gViewportFullscreen));
+
+    gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
+                  SCREEN_HEIGHT - BORDER_HEIGHT);
+
+    if (!gDjuiDisabled) {
+        djui_reset_hud_params();
+        create_dl_ortho_matrix();
+        djui_gfx_displaylist_begin();
+        if (gServerSettings.nametags && !gDjuiInMainMenu) {
+            nametags_render();
+        }
+        smlua_call_event_hooks(HOOK_ON_HUD_RENDER_BEHIND, djui_reset_hud_params);
+        djui_gfx_displaylist_end();
+    }
+    render_hud();
+
+    gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    render_text_labels();
+}
+
 void render_game(void) {
     dynos_update_gfx();
     if (gCurrentArea != NULL && !gWarpTransition.pauseRendering) {
-        geo_process_root(gCurrentArea->root, gViewportOverride, gViewportClip, gFBSetColor);
+        // one view per player on this PC (one view = the whole window, exactly as upstream)
+        u8 viewCount = split_screen_active() ? gLocalPlayerCount : 1;
+        // with split screen, a dialog box is drawn in the view of the player who opened it
+        bool dialogInView = viewCount > 1 && gMenuMode == -1 && get_dialog_id() != DIALOG_NONE;
+        geo_begin_views(viewCount);
 
-        gSPViewport(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(&gViewportFullscreen));
+        for (u8 view = 0; view < viewCount; view++) {
+            LOCAL_PLAYER_SCOPE(view);
+            if (viewCount > 1) { select_render_view(view, viewCount); }
+            render_game_view();
 
-        gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
-                      SCREEN_HEIGHT - BORDER_HEIGHT);
-
-        if (!gDjuiDisabled) {
-            djui_reset_hud_params();
-            create_dl_ortho_matrix();
-            djui_gfx_displaylist_begin();
-            if (gServerSettings.nametags && !gDjuiInMainMenu) {
-                nametags_render();
+            // a dialog box is shown to the player who opened it
+            if (dialogInView && (view == gDialogOwner || (view == 0 && !is_local_player(gDialogOwner)))) {
+                gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
+                              SCREEN_HEIGHT - BORDER_HEIGHT);
+                gPauseScreenMode = render_menus_and_dialogs();
+                render_text_labels();
             }
-            smlua_call_event_hooks(HOOK_ON_HUD_RENDER_BEHIND, djui_reset_hud_params);
-            djui_gfx_displaylist_end();
         }
-        render_hud();
+        if (viewCount > 1) { select_render_view(0, 1); }
 
+        // shared screens: the whole window
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-        render_text_labels();
         do_cutscene_handler();
         if (!gDjuiInMainMenu) {
             print_displaying_credits_entry();
         }
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                       SCREEN_HEIGHT - BORDER_HEIGHT);
-        gPauseScreenMode = render_menus_and_dialogs();
+        if (!dialogInView) {
+            gPauseScreenMode = render_menus_and_dialogs();
+            // split screen: text the menus queued belongs to the whole window, not next frame's first view
+            if (viewCount > 1) { render_text_labels(); }
+        }
 
         if (gPauseScreenMode != 0) {
             gSaveOptSelectIndex = gPauseScreenMode;

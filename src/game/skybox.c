@@ -13,6 +13,7 @@
 #include "geo_commands.h"
 #include "hardcoded.h"
 #include "skybox.h"
+#include "rendering_graph_node.h"
 
 /**
  * @file skybox.c
@@ -263,13 +264,14 @@ void *create_skybox_ortho_matrix(s8 player) {
     f32 bottom = sSkyBoxInfo[player].scaledY - SCREEN_HEIGHT;
     f32 top = sSkyBoxInfo[player].scaledY;
 
-    extern Mtx* gBackgroundSkyboxMtx;
+    // each split screen view keeps its own skybox buffers, refilled in place at the in-between frames
+    Mtx **viewSkyboxMtx = gBackgroundSkyboxMtxForView();
     Mtx *mtx;
     if (gRenderingInterpolated) {
-        mtx = gBackgroundSkyboxMtx;
+        mtx = *viewSkyboxMtx;
     } else {
         mtx = alloc_display_list(sizeof(*mtx));
-        gBackgroundSkyboxMtx = mtx;
+        *viewSkyboxMtx = mtx;
     }
 
     if (mtx != NULL) {
@@ -284,16 +286,16 @@ void *create_skybox_ortho_matrix(s8 player) {
  * Creates the skybox's display list, then draws the 3x3 grid of tiles.
  */
 Gfx *init_skybox_display_list(s8 player, s8 background, s8 colorIndex) {
-    extern Gfx* gBackgroundSkyboxGfx;
 
     s32 dlCommandCount = 5 + (sSkyboxTileNumY * sSkyboxTileNumX) * 8; // 5 for the start and end, plus the amount of skybox tiles
 
+    Gfx **viewSkyboxGfx = gBackgroundSkyboxGfxForView();
     void *skybox;
     if (gRenderingInterpolated) {
-        skybox = gBackgroundSkyboxGfx;
+        skybox = *viewSkyboxGfx;
     } else {
         skybox = alloc_display_list(dlCommandCount * sizeof(Gfx));
-        gBackgroundSkyboxGfx = (Gfx*)skybox;
+        *viewSkyboxGfx = (Gfx*)skybox;
     }
 
     Gfx *dlist = skybox;

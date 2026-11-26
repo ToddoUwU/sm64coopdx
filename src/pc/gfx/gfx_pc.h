@@ -39,6 +39,15 @@ extern "C" {
 void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, const char *window_title);
 struct GfxRenderingAPI *gfx_get_current_rendering_api(void);
 void gfx_start_frame(void);
+
+// Split screen: rectangle (top-left origin, pixels) of view `index` out of `count` in a window of winW x winH.
+// 2 views are stacked top and bottom; 3 or 4 views share a 2x2 grid.
+void gfx_split_screen_view_rect(uint8_t index, uint8_t count, uint32_t winW, uint32_t winH,
+                                uint32_t *x, uint32_t *y, uint32_t *w, uint32_t *h);
+// Makes the current dimensions those of view `index` of `count` (count 1 = whole window). The game calls it
+// while building a view's display list (with gSPView) so aspect-dependent code matches; G_VIEW_EXT calls it
+// again when the display list is drawn.
+void gfx_set_view(uint8_t index, uint8_t count);
 void gfx_run(Gfx *commands);
 void gfx_end_frame_render(void);
 void gfx_display_frame(void);

@@ -113,6 +113,8 @@ enum DialogSpecialChars {
 
 extern s8 gDialogBoxState;
 extern s32 gDialogResponse;
+// local player who opened the current dialog box (split screen)
+extern u8 gDialogOwner;
 extern u16 gDialogColorFadeTimer;
 extern s8 gLastDialogLineNum;
 extern s32 gDialogVariable;
