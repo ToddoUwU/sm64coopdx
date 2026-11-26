@@ -158,25 +158,22 @@ void bhv_door_init(void) {
     sync_object_init(o, SYNC_DISTANCE_ONLY_EVENTS);
 }
 
+// Checks if a door is seen from `room` (the room itself or one next to it).
+static s32 door_visible_from_room(s16 room) {
+    if (room == 0) { return 1; }
+    if (o->oDoorUnkF8 == room) { return 1; }
+    if (room == o->oDoorUnkFC || room == o->oDoorUnk100) { return 1; }
+    if (gDoorAdjacentRooms[room][0] == o->oDoorUnkFC || gDoorAdjacentRooms[room][0] == o->oDoorUnk100) { return 1; }
+    if (gDoorAdjacentRooms[room][1] == o->oDoorUnkFC || gDoorAdjacentRooms[room][1] == o->oDoorUnk100) { return 1; }
+    return 0;
+}
+
 void bhv_star_door_loop_2(void) {
+    // shown when any player on this PC can see it
     s32 sp4 = 0;
-    if (gMarioCurrentRoom != 0) {
-        if (o->oDoorUnkF8 == gMarioCurrentRoom)
-            sp4 = 1;
-        else if (gMarioCurrentRoom == o->oDoorUnkFC)
-            sp4 = 1;
-        else if (gMarioCurrentRoom == o->oDoorUnk100)
-            sp4 = 1;
-        else if (gDoorAdjacentRooms[gMarioCurrentRoom][0] == o->oDoorUnkFC)
-            sp4 = 1;
-        else if (gDoorAdjacentRooms[gMarioCurrentRoom][0] == o->oDoorUnk100)
-            sp4 = 1;
-        else if (gDoorAdjacentRooms[gMarioCurrentRoom][1] == o->oDoorUnkFC)
-            sp4 = 1;
-        else if (gDoorAdjacentRooms[gMarioCurrentRoom][1] == o->oDoorUnk100)
-            sp4 = 1;
-    } else
-        sp4 = 1;
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        if (door_visible_from_room(gMarioStates[i].currentRoom)) { sp4 = 1; }
+    }
     if (sp4 == 1) {
         o->header.gfx.node.flags |= GRAPH_RENDER_ACTIVE;
         D_8035FEE4++;

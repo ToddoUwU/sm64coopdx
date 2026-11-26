@@ -3,6 +3,7 @@
 #include "sm64.h"
 #include "behavior_data.h"
 #include "behavior_script.h"
+#include "game/local_players.h"
 #include "engine/level_script.h"
 #include "game/area.h"
 #include "game/behavior_actions.h"
@@ -1353,7 +1354,7 @@ cur_obj_update_begin:;
 
     // Calculate the distance from the object to Mario.
     if (objFlags & OBJ_FLAG_COMPUTE_DIST_TO_MARIO) {
-        gCurrentObject->oDistanceToMario = dist_between_objects(gCurrentObject, gMarioObject);
+        gCurrentObject->oDistanceToMario = dist_between_objects(gCurrentObject, nearest_local_mario_object(gCurrentObject));
         distanceFromMario = gCurrentObject->oDistanceToMario;
     } else {
         distanceFromMario = 0.0f;
@@ -1361,7 +1362,7 @@ cur_obj_update_begin:;
 
     // Calculate the angle from the object to Mario.
     if (objFlags & OBJ_FLAG_COMPUTE_ANGLE_TO_MARIO) {
-        gCurrentObject->oAngleToMario = obj_angle_to_object(gCurrentObject, gMarioObject);
+        gCurrentObject->oAngleToMario = obj_angle_to_object(gCurrentObject, nearest_local_mario_object(gCurrentObject));
     }
 
     // If the object's action has changed, reset the action timer.

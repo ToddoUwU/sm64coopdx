@@ -244,7 +244,7 @@ void coin_inside_boo_act_0(void) {
     obj_copy_pos(o, parent);
     if (parent->oBooDeathStatus == BOO_DEATH_STATUS_DYING) {
         o->oAction = 1;
-        s16 sp26 = gMarioObject ? gMarioObject->oMoveAngleYaw : 0;
+        s16 sp26 = nearest_local_mario_object(o) ? nearest_local_mario_object(o)->oMoveAngleYaw : 0;
         f32 sp20 = 3.0f;
         o->oVelX = sins(sp26) * sp20;
         o->oVelZ = coss(sp26) * sp20;

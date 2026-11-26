@@ -1537,6 +1537,14 @@ void update_mario_joystick_inputs(struct MarioState *m) {
 /**
  * Resolves wall collisions, and updates a variety of inputs.
  */
+// Checks if a player on this PC other than `m` has more than `frames` of cap time left.
+static bool other_local_player_cap_time_above(struct MarioState *m, u16 frames) {
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        if (&gMarioStates[i] != m && gMarioStates[i].capTimer > frames) { return true; }
+    }
+    return false;
+}
+
 // Checks if anyone besides `m` (online, or another player on this PC) is still playing in this area.
 static bool is_player_active_besides(struct MarioState *m) {
     for (s32 i = 0; i < MAX_PLAYERS; i++) {
@@ -1870,8 +1878,11 @@ u32 update_and_return_cap_flags(struct MarioState *m) {
             m->capTimer -= 1;
         }
 
-        if (m->capTimer == 0) {
+        // cap music is shared: it keeps playing while another player on this PC still has a cap
+        if (m->capTimer == 0 && !other_local_player_cap_time_above(m, 0)) {
             stop_cap_music();
+        }
+        if (m->capTimer == 0) {
 
             m->flags &= ~MARIO_SPECIAL_CAPS;
             if (!(m->flags & MARIO_CAPS)) {
@@ -1879,7 +1890,7 @@ u32 update_and_return_cap_flags(struct MarioState *m) {
             }
         }
 
-        if (m->capTimer == 60) {
+        if (m->capTimer == 60 && !other_local_player_cap_time_above(m, 60)) {
             fadeout_cap_music();
         }
 

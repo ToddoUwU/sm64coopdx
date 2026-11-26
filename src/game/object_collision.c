@@ -7,6 +7,7 @@
 #include "object_list_processor.h"
 #include "spawn_object.h"
 #include "pc/network/network_player.h"
+#include "local_players.h"
 
 struct Object *debug_print_obj_collision(struct Object *a) {
     if (!a) { return NULL; }
@@ -186,9 +187,11 @@ void check_player_object_collision(void) {
     }
 
     extern struct MarioState gMarioStates[];
-    for (s32 i = 1; i < MAX_PLAYERS; i++) {
-        if (detect_player_hitbox_overlap(&gMarioStates[0], &gMarioStates[i], 1.0f)) {
-            struct Object* a = gMarioStates[0].marioObj;
+    // each player on this PC against every later player (online players check their own collisions)
+    for (s32 l = 0; l < gLocalPlayerCount; l++)
+    for (s32 i = l + 1; i < MAX_PLAYERS; i++) {
+        if (detect_player_hitbox_overlap(&gMarioStates[l], &gMarioStates[i], 1.0f)) {
+            struct Object* a = gMarioStates[l].marioObj;
             struct Object* b = gMarioStates[i].marioObj;
             if (a->numCollidedObjs >= 4) { continue; }
             if (b->numCollidedObjs >= 4) { continue; }

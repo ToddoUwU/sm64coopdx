@@ -83,6 +83,30 @@ struct MarioState *nearest_local_mario_to_object(struct Object *obj) {
     return nearest_local_mario_to_point(obj->oPosX, obj->oPosY, obj->oPosZ);
 }
 
+struct Object *nearest_local_mario_object(struct Object *obj) {
+    if (gLocalPlayerCount <= 1) { return gMarioObject; }
+    return nearest_local_mario_to_object(obj)->marioObj;
+}
+
+bool local_mario_within_rectangle(s16 minX, s16 maxX, s16 minZ, s16 maxZ) {
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        struct Object *player = gMarioStates[i].marioObj;
+        if (player == NULL) { continue; }
+        if (player->oPosX < minX || maxX < player->oPosX) { continue; }
+        if (player->oPosZ < minZ || maxZ < player->oPosZ) { continue; }
+        return true;
+    }
+    return false;
+}
+
+bool local_mario_above(f32 y) {
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        struct Object *player = gMarioStates[i].marioObj;
+        if (player != NULL && player->oPosY > y) { return true; }
+    }
+    return false;
+}
+
 bool any_local_mario_within(struct Object *obj, f32 distance) {
     if (obj == NULL) { return false; }
     for (u8 i = 0; i < gLocalPlayerCount; i++) {
@@ -141,6 +165,13 @@ struct MarioState *local_mario_with_cap_flag(u32 capFlag) {
         if (gMarioStates[i].cap & capFlag) { return &gMarioStates[i]; }
     }
     return NULL;
+}
+
+bool local_player_in_room(s16 room) {
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        if (gMarioStates[i].currentRoom == room) { return true; }
+    }
+    return false;
 }
 
 bool cur_obj_collided_with_local_mario(void) {

@@ -16,7 +16,7 @@ static void handle_merry_go_round_music(void) {
     // If the music should play, play it and check whether it still should.
     // Otherwise, don't play it and check whether it should.
     if (o->oMerryGoRoundMusicShouldPlay == FALSE) {
-        if (gMarioCurrentRoom == BBH_NEAR_MERRY_GO_ROUND_ROOM) {
+        if (local_player_in_room(BBH_NEAR_MERRY_GO_ROUND_ROOM)) {
             // Play the merry-go-round and BBH music at the same time
             play_secondary_music(SEQ_EVENT_MERRY_GO_ROUND, 45, 20, 200);
             // Set to TRUE
@@ -57,8 +57,8 @@ static void handle_merry_go_round_music(void) {
         // If he is, play the creaking sound.
         if (
             // The merry-go-round is a dynamic surface.
-            gMarioCurrentRoom != BBH_DYNAMIC_SURFACE_ROOM
-            && gMarioCurrentRoom != BBH_NEAR_MERRY_GO_ROUND_ROOM) {
+            !local_player_in_room(BBH_DYNAMIC_SURFACE_ROOM)
+            && !local_player_in_room(BBH_NEAR_MERRY_GO_ROUND_ROOM)) {
             stop_secondary_music(300); // Switch to BBH music? FIXME: Audio needs labelling
             o->oMerryGoRoundMusicShouldPlay = FALSE;
         } else {
@@ -96,7 +96,7 @@ void bhv_merry_go_round_loop(void) {
     // Surprisingly, the merry-go-round is what's responsible
     // for playing the howling wind sound in BBH.
     if (!o->oMerryGoRoundMarioIsOutside) {
-        if (gMarioCurrentRoom == BBH_OUTSIDE_ROOM) {
+        if (local_player_in_room(BBH_OUTSIDE_ROOM)) {
             // Set to TRUE
             o->oMerryGoRoundMarioIsOutside++;
         }
@@ -109,7 +109,7 @@ void bhv_merry_go_round_loop(void) {
             //! @bug Interestingly, this means if Mario goes from outside
             // to a dynamic surface *inside* the mansion in a single frame,
             // the howling wind music will still play.
-            gMarioCurrentRoom != BBH_OUTSIDE_ROOM && gMarioCurrentRoom != BBH_DYNAMIC_SURFACE_ROOM) {
+            !local_player_in_room(BBH_OUTSIDE_ROOM) && !local_player_in_room(BBH_DYNAMIC_SURFACE_ROOM)) {
             o->oMerryGoRoundMarioIsOutside = FALSE;
         }
     }

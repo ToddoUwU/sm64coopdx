@@ -9,6 +9,7 @@
 #include "playback.h"
 #include "synthesis.h"
 #include "game/level_update.h"
+#include "game/local_players.h"
 #include "game/object_list_processor.h"
 #include "game/camera.h"
 #include "game/hardcoded.h"
@@ -2010,7 +2011,7 @@ void process_level_music_dynamics(void) {
                     break;
                 }
                 case MARIO_IS_IN_ROOM: {
-                    if (gMarioCurrentRoom != conditionValues[j]) {
+                    if (!local_player_in_room(conditionValues[j])) {
                         j = condIndex + 1;
                     }
                     break;

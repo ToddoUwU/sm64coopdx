@@ -706,7 +706,7 @@ void set_object_visibility(struct Object *obj, s32 dist) {
         obj->header.gfx.node.flags &= ~GRAPH_RENDER_INVISIBLE;
         return;
     }
-    s32 distanceToPlayer = dist_between_objects(obj, gMarioStates[0].marioObj);
+    s32 distanceToPlayer = dist_between_objects(obj, nearest_local_mario_to_object(obj)->marioObj);
     if (distanceToPlayer < dist * draw_distance_scalar()) {
         obj->header.gfx.node.flags &= ~GRAPH_RENDER_INVISIBLE;
     } else {
@@ -826,26 +826,21 @@ s8 obj_flicker_and_disappear(struct Object *obj, s16 lifeSpan) {
 
 /* |description|Checks if a given room is Mario's current room, even if on an object|descriptionEnd| */
 s8 current_mario_room_check(s16 room) {
-    s16 result;
-
-    // Since object surfaces have room 0, this tests if the surface is an
-    // object first and uses the last room if so.
-    if (gMarioCurrentRoom == 0) {
-        if (room == sPrevCheckMarioRoom) {
-            return TRUE;
+    // true when the room is the room of any player on this PC
+    static s16 sPrevCheckLocalRooms[MAX_LOCAL_PLAYERS] = { 0 };
+    s8 result = FALSE;
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        s16 marioRoom = gMarioStates[i].currentRoom;
+        // Since object surfaces have room 0, this tests if the surface is an
+        // object first and uses the last room if so.
+        if (marioRoom == 0) {
+            marioRoom = sPrevCheckLocalRooms[i];
         } else {
-            return FALSE;
+            sPrevCheckLocalRooms[i] = marioRoom;
         }
-    } else {
-        if (room == gMarioCurrentRoom) {
-            result = TRUE;
-        } else {
-            result = FALSE;
-        }
-
-        sPrevCheckMarioRoom = gMarioCurrentRoom;
+        if (room == marioRoom) { result = TRUE; }
     }
-
+    sPrevCheckMarioRoom = sPrevCheckLocalRooms[0];
     return result;
 }
 

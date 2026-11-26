@@ -134,7 +134,9 @@ static void toad_message_opaque(void) {
 
 static void toad_message_talking(void) {
     if (!gCurrentObject) { return; }
-    if (cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 3, 1, CUTSCENE_DIALOG, gCurrentObject->oToadMessageDialogId, NULL)
+    // the player on this PC talking to Toad gets his star
+    struct MarioState *talker = local_dialog_mario(gCurrentObject, NULL);
+    if (cur_obj_update_dialog_with_cutscene(talker, 3, 1, CUTSCENE_DIALOG, gCurrentObject->oToadMessageDialogId, NULL)
         != 0) {
         gCurrentObject->oToadMessageRecentlyTalked = TRUE;
         gCurrentObject->oToadMessageState = TOAD_MESSAGE_FADING;
@@ -142,13 +144,13 @@ static void toad_message_talking(void) {
         s32 dialogId = gCurrentObject->oToadMessageDialogId;
         if (dialogId == TOAD_STAR_1_DIALOG) {
             gCurrentObject->oToadMessageDialogId = TOAD_STAR_1_DIALOG_AFTER;
-            bhv_spawn_star_no_level_exit(gMarioStates[0].marioObj, 0, TRUE);
+            bhv_spawn_star_no_level_exit(talker->marioObj, 0, TRUE);
         } else if (dialogId == TOAD_STAR_2_DIALOG) {
             gCurrentObject->oToadMessageDialogId = TOAD_STAR_2_DIALOG_AFTER;
-            bhv_spawn_star_no_level_exit(gMarioStates[0].marioObj, 1, TRUE);
+            bhv_spawn_star_no_level_exit(talker->marioObj, 1, TRUE);
         } else if (dialogId == TOAD_STAR_3_DIALOG) {
             gCurrentObject->oToadMessageDialogId = TOAD_STAR_3_DIALOG_AFTER;
-            bhv_spawn_star_no_level_exit(gMarioStates[0].marioObj, 2, TRUE);
+            bhv_spawn_star_no_level_exit(talker->marioObj, 2, TRUE);
         }
     }
 }

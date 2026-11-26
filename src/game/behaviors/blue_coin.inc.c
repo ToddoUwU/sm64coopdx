@@ -162,8 +162,8 @@ void bhv_blue_coin_switch_loop(void) {
                 // Set to BLUE_COIN_SWITCH_ACT_TICKING
                 o->oAction++;
                 // ???
-                if (gMarioObject) {
-                    o->oPosY = gMarioObject->oPosY - 40.0f;
+                if (nearest_local_mario_object(o)) {
+                    o->oPosY = nearest_local_mario_object(o)->oPosY - 40.0f;
                 }
 
                 // Spawn particles. There's a function that calls this same function

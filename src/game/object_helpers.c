@@ -209,15 +209,17 @@ Gfx *geo_switch_area(s32 callContext, struct GraphNode *node) {
     if (callContext == GEO_CONTEXT_RENDER) {
         if (gRoomOverride >= 0) {
             switchCase->selectedCase = gRoomOverride - 1;
-        } else if (gMarioObject == NULL) {
+        } else if (current_local_mario()->marioObj == NULL) {
             switchCase->selectedCase = 0;
         } else {
+            // each view shows the room of the player it belongs to
+            struct MarioState *viewer = current_local_mario();
             gFindFloorIncludeSurfaceIntangible = TRUE;
 
-            find_floor(gMarioObject->oPosX, gMarioObject->oPosY, gMarioObject->oPosZ, &sp20);
+            find_floor(viewer->marioObj->oPosX, viewer->marioObj->oPosY, viewer->marioObj->oPosZ, &sp20);
             if (sp20) {
                 gMarioCurrentRoom = sp20->room;
-                gMarioStates[0].currentRoom = gMarioCurrentRoom;
+                viewer->currentRoom = gMarioCurrentRoom;
                 sp26 = sp20->room - 1;
                 print_debug_top_down_objectinfo("areainfo %d", sp20->room);
 
@@ -1457,8 +1459,9 @@ void cur_obj_move_after_thrown_or_dropped(f32 forwardVel, f32 velY) {
         o->oPosY = o->oFloorHeight;
     } else if (o->oFloorHeight < gLevelValues.floorLowerLimitMisc) {
         //! OoB failsafe
-        if (gMarioObject) {
-            obj_copy_pos(o, gMarioObject);
+        struct Object *player = nearest_local_mario_object(o);
+        if (player) {
+            obj_copy_pos(o, player);
         }
         o->oFloorHeight = find_floor_height(o->oPosX, o->oPosY, o->oPosZ);
     }
@@ -2043,9 +2046,10 @@ void cur_obj_start_cam_event(UNUSED struct Object *obj, s32 cameraEvent) {
 
 /* |description|Sets Mario's interact status to hoot-grabbed if Mario is within range|descriptionEnd| */
 void set_mario_interact_hoot_if_in_range(UNUSED s32 sp0, UNUSED s32 sp4, f32 sp8) {
-    if (!o || !gMarioObject) { return; }
+    struct Object *player = o ? nearest_local_mario_object(o) : NULL;
+    if (!o || !player) { return; }
     if (o->oDistanceToMario < sp8) {
-        gMarioObject->oInteractStatus = INT_STATUS_HOOT_GRABBED_BY_MARIO;
+        player->oInteractStatus = INT_STATUS_HOOT_GRABBED_BY_MARIO;
     }
 }
 
@@ -2948,10 +2952,7 @@ void stub_obj_helpers_4(void) {
 
 /* |description|Returns `TRUE` if Mario is currently standing on the current platform object|descriptionEnd| */
 s32 cur_obj_is_mario_on_platform(void) {
-    if (gMarioObject && gMarioObject->platform == o) {
-        return TRUE;
-    }
-    return FALSE;
+    return local_mario_on_platform(o) != NULL;
 }
 
 /* |description|Returns `TRUE` if any player is standing on the current platform object|descriptionEnd| */
@@ -3199,9 +3200,12 @@ void cur_obj_if_hit_wall_bounce_away(void) {
 s32 cur_obj_hide_if_mario_far_away_y(f32 distY) {
     if (!o) { return 0; }
     if (!gMarioStates[0].marioObj) { return FALSE; }
-    if (draw_distance_scalar_is_infinite() ||
-        absf(o->oPosY - gMarioStates[0].marioObj->oPosY) < distY * draw_distance_scalar()
-    ) {
+    // shown while any player on this PC is close enough vertically
+    f32 nearestDistY = absf(o->oPosY - gMarioStates[0].marioObj->oPosY);
+    for (u8 i = 1; i < gLocalPlayerCount; i++) {
+        if (gMarioStates[i].marioObj) { nearestDistY = MIN(nearestDistY, absf(o->oPosY - gMarioStates[i].marioObj->oPosY)); }
+    }
+    if (draw_distance_scalar_is_infinite() || nearestDistY < distY * draw_distance_scalar()) {
         cur_obj_unhide();
         return FALSE;
     }
@@ -3522,16 +3526,7 @@ void cur_obj_align_gfx_with_floor(void) {
 
 /* |description|Returns `TRUE` if Mario's position lies within a 2D rectangle on the XZ plane|descriptionEnd| */
 s32 mario_is_within_rectangle(s16 minX, s16 maxX, s16 minZ, s16 maxZ) {
-    if (!gMarioObject) { return FALSE; }
-    if (gMarioObject->oPosX < minX || maxX < gMarioObject->oPosX) {
-        return FALSE;
-    }
-
-    if (gMarioObject->oPosZ < minZ || maxZ < gMarioObject->oPosZ) {
-        return FALSE;
-    }
-
-    return TRUE;
+    return local_mario_within_rectangle(minX, maxX, minZ, maxZ);
 }
 
 /* |description|Shakes the camera around the current object with a given intensity|descriptionEnd| */

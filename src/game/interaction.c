@@ -444,7 +444,7 @@ u32 mario_lose_cap_to_enemy(struct MarioState* m, u32 arg) {
     u32 wasWearingCap = FALSE;
 
     if (does_mario_have_normal_cap_on_head(m)) {
-        gMarioStates[0].cap = (arg == 1 ? SAVE_FLAG_CAP_ON_KLEPTO : SAVE_FLAG_CAP_ON_UKIKI);
+        m->cap = (arg == 1 ? SAVE_FLAG_CAP_ON_KLEPTO : SAVE_FLAG_CAP_ON_UKIKI);
         m->flags &= ~(MARIO_NORMAL_CAP | MARIO_CAP_ON_HEAD);
         wasWearingCap = TRUE;
     }
@@ -901,6 +901,10 @@ u32 interact_coin(struct MarioState *m, UNUSED u32 interactType, struct Object *
 
     m->numCoins += o->oDamageOrCoinValue;
     m->healCounter += 4 * o->oDamageOrCoinValue;
+    // coins are shared in co-op: the other players on this PC count them too (online players get the packet)
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        if (&gMarioStates[i] != m) { gMarioStates[i].numCoins += o->oDamageOrCoinValue; }
+    }
 
     o->oInteractStatus = INT_STATUS_INTERACTED;
 

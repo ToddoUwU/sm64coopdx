@@ -33,7 +33,7 @@ void bhv_purple_switch_loop(void) {
             cur_obj_scale(1.5f);
             struct MarioState *presser = local_mario_on_platform(o);
             if (presser != NULL && !(presser->action & MARIO_UNKNOWN_13)) {
-                if (lateral_dist_between_objects(o, gMarioObject) < 127.5) {
+                if (lateral_dist_between_objects(o, presser->marioObj) < 127.5) {
                     o->oAction = PURPLE_SWITCH_PRESSED;
                     network_send_object(o);
                 }

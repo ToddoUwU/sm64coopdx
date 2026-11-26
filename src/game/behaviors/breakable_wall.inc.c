@@ -8,7 +8,7 @@ void bhv_wf_breakable_wall_loop(void) {
 
     if (o->oBreakableWallForce || local_mario_in_action(ACT_SHOT_FROM_CANNON) != NULL) {
         cur_obj_become_tangible();
-        if (o->oBreakableWallForce || obj_check_if_collided_with_object(o, gMarioObject)) {
+        if (o->oBreakableWallForce || cur_obj_collided_with_local_mario()) {
             if (!o->oBreakableWallForce) {
                 o->oBreakableWallForce = TRUE;
                 network_send_object(o);

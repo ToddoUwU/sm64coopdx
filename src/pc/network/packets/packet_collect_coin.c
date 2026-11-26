@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "../network.h"
+#include "game/local_players.h"
 #include "object_fields.h"
 #include "object_constants.h"
 #include "behavior_table.h"
@@ -95,7 +96,10 @@ void network_receive_collect_coin(struct Packet* p) {
     }
 
 SANITY_CHECK_COINS:;
-    gMarioStates[0].numCoins = max(numCoins, gMarioStates[0].numCoins + coinValue);
+    // every player on this PC shares the coin count
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        gMarioStates[i].numCoins = max(numCoins, gMarioStates[i].numCoins + coinValue);
+    }
 
     // check for 100-coin star
     if (COURSE_IS_MAIN_COURSE(gCurrCourseNum)

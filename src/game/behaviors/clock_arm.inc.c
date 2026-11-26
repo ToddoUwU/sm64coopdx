@@ -4,8 +4,9 @@
 void bhv_rotating_clock_arm_loop(void) {
     struct Surface *marioSurface = NULL;
     u16 rollAngle = o->oFaceAngleRoll;
-    if (gMarioObject != NULL) {
-        o->oFloorHeight = find_floor(gMarioObject->oPosX, gMarioObject->oPosY, gMarioObject->oPosZ, &marioSurface);
+    struct Object *player = nearest_local_mario_object(o);
+    if (player != NULL) {
+        o->oFloorHeight = find_floor(player->oPosX, player->oPosY, player->oPosZ, &marioSurface);
     }
 
     // Seems to make sure Mario is on a default surface & 4 frames pass before

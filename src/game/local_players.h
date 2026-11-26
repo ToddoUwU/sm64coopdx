@@ -54,6 +54,8 @@ static inline void local_player_scope_restore(u8 *previousLocalIndex) {
 // Nearest active local Mario to an object or point (never NULL while a session runs).
 struct MarioState *nearest_local_mario_to_object(struct Object *obj);
 struct MarioState *nearest_local_mario_to_point(f32 x, f32 y, f32 z);
+// Mario object of the nearest local player (player 1's gMarioObject when split screen is off, as upstream).
+struct Object *nearest_local_mario_object(struct Object *obj);
 // Checks if any active local Mario is within `distance` of `obj`.
 bool any_local_mario_within(struct Object *obj, f32 distance);
 
@@ -66,6 +68,12 @@ struct MarioState *local_mario_using_object(struct Object *obj);
 // First local Mario in `action`, or whose cap flags include `capFlag` (NULL when none).
 struct MarioState *local_mario_in_action(u32 action);
 struct MarioState *local_mario_with_cap_flag(u32 capFlag);
+// Checks if any local Mario's object is inside the XZ rectangle.
+bool local_mario_within_rectangle(s16 minX, s16 maxX, s16 minZ, s16 maxZ);
+// Checks if any local Mario is higher than `y`.
+bool local_mario_above(f32 y);
+// Checks if any local player is in `room` (rooms are found while that player's view renders).
+bool local_player_in_room(s16 room);
 // Checks the current object (gCurrentObject) against every visible local Mario.
 bool cur_obj_collided_with_local_mario(void);
 bool local_mario_ground_pounding_platform(struct Object *platform);

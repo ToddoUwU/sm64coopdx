@@ -1824,15 +1824,27 @@ Gfx *geo_painting_update(s32 callContext, UNUSED struct GraphNode *node, UNUSED 
         gLastPaintingUpdateCounter = gPaintingUpdateCounter;
         gPaintingUpdateCounter = gAreaUpdateCounter;
 
-        // Store Mario's floor and position
-        if (gMarioObject) {
-            find_floor(gMarioObject->oPosX, gMarioObject->oPosY, gMarioObject->oPosZ, &surface);
+        // Store Mario's floor and position: the first player on this PC standing on a painting's floor, else
+        // player 1 (the same answer in every split screen view)
+        struct Object *player = gMarioObject;
+        for (u8 i = 0; i < gLocalPlayerCount; i++) {
+            struct Object *candidate = gMarioStates[i].marioObj;
+            if (candidate == NULL) { continue; }
+            find_floor(candidate->oPosX, candidate->oPosY, candidate->oPosZ, &surface);
+            if (surface != NULL && surface->type >= SURFACE_PAINTING_WOBBLE_A6 && surface->type <= SURFACE_WOBBLING_WARP) {
+                player = candidate;
+                break;
+            }
+        }
+        if (player) {
+            surface = NULL;
+            find_floor(player->oPosX, player->oPosY, player->oPosZ, &surface);
             if (surface != NULL) {
                 gPaintingMarioFloorType = surface->type;
             }
-            gPaintingMarioXPos = gMarioObject->oPosX;
-            gPaintingMarioYPos = gMarioObject->oPosY;
-            gPaintingMarioZPos = gMarioObject->oPosZ;
+            gPaintingMarioXPos = player->oPosX;
+            gPaintingMarioYPos = player->oPosY;
+            gPaintingMarioZPos = player->oPosZ;
         }
     }
     return NULL;
