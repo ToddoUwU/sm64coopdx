@@ -34,8 +34,6 @@ struct EnvFxParticle {
 
 #include "local_players.h"
 
-#define ENVFX_SNOW_INTERNAL_GFX_SLOTS (140 / 5)
-#define ENVFX_BUBBLE_INTERNAL_GFX_SLOTS (65 / 5)
 
 // Snow, bubbles and flowers are particles placed around the camera, so each split screen view keeps its own
 // particles and display list records. The original names are macros over the view of the player in scope.
@@ -48,7 +46,7 @@ struct EnvFxView {
 
     s32 snowGfxMode;
     Gfx *snowGfxPos;
-    Vtx *snowInternalGfxPos[ENVFX_SNOW_INTERNAL_GFX_SLOTS];
+    Vtx *snowInternalGfxPos[140 / 5];
     Vec3s snowGfxCamFrom;
     Vec3s snowGfxCamTo;
     Vec3s snowGfxMarioPos;
@@ -58,7 +56,7 @@ struct EnvFxView {
     s32 bubbleParticleMaxCount;
     s32 bubbleGfxMode;
     Gfx *bubbleGfxPos;
-    Vtx *bubbleInternalGfxPos[ENVFX_BUBBLE_INTERNAL_GFX_SLOTS];
+    Vtx *bubbleInternalGfxPos[65 / 5];
     Vec3s bubbleGfxCamFrom;
     Vec3s bubbleGfxCamTo;
 };

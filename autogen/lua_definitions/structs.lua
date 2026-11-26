@@ -47,6 +47,7 @@
 --- @field public numRedCoins integer
 --- @field public numSecrets integer
 --- @field public nextSyncID integer
+--- @field public cameras Camera[]
 
 --- @class BehaviorDialogs
 --- @field public BobombBuddyBob1Dialog DialogId
@@ -880,6 +881,8 @@
 --- @field public prevScaleTimestamp integer
 --- @field public prevThrowMatrixTimestamp integer
 --- @field public skipInterpolationTimestamp integer
+--- @field public drawnInViewTimestamp integer
+--- @field public cameraToObjectTimestamp integer
 --- @field public animInfo AnimInfo
 --- @field public areaIndex integer
 --- @field public activeAreaIndex integer

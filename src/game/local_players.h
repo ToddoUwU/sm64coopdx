@@ -28,7 +28,9 @@ u8 get_current_local_player(void);
 /* |description|Checks if the player in slot `playerIndex` is playing on this PC|descriptionEnd| */
 bool is_local_player(s32 playerIndex);
 
+/* |description|Checks if `m` is the Mario of a player on this PC|descriptionEnd| */
 bool mario_is_local(const struct MarioState *m);
+/* |description|Gets the Mario of local player `localIndex` (0 = player 1)|descriptionEnd| */
 struct MarioState *local_mario(u8 localIndex);
 // The Mario of the player that per-player systems are currently working for.
 struct MarioState *current_local_mario(void);
@@ -52,6 +54,7 @@ static inline void local_player_scope_restore(u8 *previousLocalIndex) {
     u8 localPlayerScopePrevious __attribute__((cleanup(local_player_scope_restore))) = local_player_scope_begin(localIndex)
 
 // Nearest active local Mario to an object or point (never NULL while a session runs).
+/* |description|Gets the nearest active Mario of a player on this PC to `obj`|descriptionEnd| */
 struct MarioState *nearest_local_mario_to_object(struct Object *obj);
 struct MarioState *nearest_local_mario_to_point(f32 x, f32 y, f32 z);
 // Mario object of the nearest local player (player 1's gMarioObject when split screen is off, as upstream).
@@ -60,6 +63,7 @@ struct Object *nearest_local_mario_object(struct Object *obj);
 bool any_local_mario_within(struct Object *obj, f32 distance);
 
 // Checks if `obj` is the Mario object of a player on this PC.
+/* |description|Checks if `obj` is the Mario object of a player on this PC|descriptionEnd| */
 bool is_local_mario_object(struct Object *obj);
 // First local Mario standing on `platform`, held by `obj`, or using `obj` (NULL when none).
 struct MarioState *local_mario_on_platform(struct Object *platform);

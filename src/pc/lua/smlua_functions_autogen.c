@@ -52,6 +52,7 @@
 #include "src/game/first_person_cam.h"
 #include "src/engine/behavior_script.h"
 #include "src/audio/seqplayer.h"
+#include "src/game/local_players.h"
 #include "src/engine/lighting_engine.h"
 #include "src/pc/network/sync_object.h"
 #include "src/audio/load.h"
@@ -16073,6 +16074,373 @@ int smlua_func_set_sound_bank_override(lua_State* L) {
     return 1;
 }
 
+  /////////////////////
+ // local_players.h //
+/////////////////////
+
+int smlua_func_get_local_player_count(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 0) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "get_local_player_count", 0, top);
+        return 0;
+    }
+
+
+    lua_pushinteger(L, get_local_player_count());
+
+    return 1;
+}
+
+int smlua_func_get_current_local_player(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 0) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "get_current_local_player", 0, top);
+        return 0;
+    }
+
+
+    lua_pushinteger(L, get_current_local_player());
+
+    return 1;
+}
+
+int smlua_func_is_local_player(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "is_local_player", 1, top);
+        return 0;
+    }
+
+    s32 playerIndex = smlua_to_integer(L, 1);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "is_local_player"); return 0; }
+
+    lua_pushboolean(L, is_local_player(playerIndex));
+
+    return 1;
+}
+
+int smlua_func_mario_is_local(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "mario_is_local", 1, top);
+        return 0;
+    }
+
+    struct MarioState* m = (struct MarioState*)smlua_to_cobject(L, 1, LOT_MARIOSTATE);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "mario_is_local"); return 0; }
+
+    lua_pushboolean(L, mario_is_local(m));
+
+    return 1;
+}
+
+int smlua_func_local_mario(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario", 1, top);
+        return 0;
+    }
+
+    u8 localIndex = smlua_to_integer(L, 1);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, local_mario(localIndex), NULL);
+
+    return 1;
+}
+
+int smlua_func_current_local_mario(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 0) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "current_local_mario", 0, top);
+        return 0;
+    }
+
+
+    smlua_push_object(L, LOT_MARIOSTATE, current_local_mario(), NULL);
+
+    return 1;
+}
+
+int smlua_func_nearest_local_mario_to_object(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "nearest_local_mario_to_object", 1, top);
+        return 0;
+    }
+
+    struct Object* obj = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "nearest_local_mario_to_object"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, nearest_local_mario_to_object(obj), NULL);
+
+    return 1;
+}
+
+int smlua_func_nearest_local_mario_to_point(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 3) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "nearest_local_mario_to_point", 3, top);
+        return 0;
+    }
+
+    f32 x = smlua_to_number(L, 1);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "nearest_local_mario_to_point"); return 0; }
+    f32 y = smlua_to_number(L, 2);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 2, "nearest_local_mario_to_point"); return 0; }
+    f32 z = smlua_to_number(L, 3);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 3, "nearest_local_mario_to_point"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, nearest_local_mario_to_point(x, y, z), NULL);
+
+    return 1;
+}
+
+int smlua_func_nearest_local_mario_object(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "nearest_local_mario_object", 1, top);
+        return 0;
+    }
+
+    struct Object* obj = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "nearest_local_mario_object"); return 0; }
+
+    smlua_push_object(L, LOT_OBJECT, nearest_local_mario_object(obj), NULL);
+
+    return 1;
+}
+
+int smlua_func_any_local_mario_within(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 2) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "any_local_mario_within", 2, top);
+        return 0;
+    }
+
+    struct Object* obj = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "any_local_mario_within"); return 0; }
+    f32 distance = smlua_to_number(L, 2);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 2, "any_local_mario_within"); return 0; }
+
+    lua_pushboolean(L, any_local_mario_within(obj, distance));
+
+    return 1;
+}
+
+int smlua_func_is_local_mario_object(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "is_local_mario_object", 1, top);
+        return 0;
+    }
+
+    struct Object* obj = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "is_local_mario_object"); return 0; }
+
+    lua_pushboolean(L, is_local_mario_object(obj));
+
+    return 1;
+}
+
+int smlua_func_local_mario_on_platform(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_on_platform", 1, top);
+        return 0;
+    }
+
+    struct Object* platform = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_on_platform"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, local_mario_on_platform(platform), NULL);
+
+    return 1;
+}
+
+int smlua_func_local_mario_held_by(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_held_by", 1, top);
+        return 0;
+    }
+
+    struct Object* obj = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_held_by"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, local_mario_held_by(obj), NULL);
+
+    return 1;
+}
+
+int smlua_func_local_mario_using_object(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_using_object", 1, top);
+        return 0;
+    }
+
+    struct Object* obj = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_using_object"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, local_mario_using_object(obj), NULL);
+
+    return 1;
+}
+
+int smlua_func_local_mario_in_action(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_in_action", 1, top);
+        return 0;
+    }
+
+    u32 action = smlua_to_integer(L, 1);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_in_action"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, local_mario_in_action(action), NULL);
+
+    return 1;
+}
+
+int smlua_func_local_mario_with_cap_flag(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_with_cap_flag", 1, top);
+        return 0;
+    }
+
+    u32 capFlag = smlua_to_integer(L, 1);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_with_cap_flag"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, local_mario_with_cap_flag(capFlag), NULL);
+
+    return 1;
+}
+
+int smlua_func_local_mario_within_rectangle(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 4) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_within_rectangle", 4, top);
+        return 0;
+    }
+
+    s16 minX = smlua_to_integer(L, 1);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_within_rectangle"); return 0; }
+    s16 maxX = smlua_to_integer(L, 2);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 2, "local_mario_within_rectangle"); return 0; }
+    s16 minZ = smlua_to_integer(L, 3);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 3, "local_mario_within_rectangle"); return 0; }
+    s16 maxZ = smlua_to_integer(L, 4);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 4, "local_mario_within_rectangle"); return 0; }
+
+    lua_pushboolean(L, local_mario_within_rectangle(minX, maxX, minZ, maxZ));
+
+    return 1;
+}
+
+int smlua_func_local_mario_above(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_above", 1, top);
+        return 0;
+    }
+
+    f32 y = smlua_to_number(L, 1);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_above"); return 0; }
+
+    lua_pushboolean(L, local_mario_above(y));
+
+    return 1;
+}
+
+int smlua_func_cur_obj_collided_with_local_mario(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 0) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "cur_obj_collided_with_local_mario", 0, top);
+        return 0;
+    }
+
+
+    lua_pushboolean(L, cur_obj_collided_with_local_mario());
+
+    return 1;
+}
+
+int smlua_func_local_mario_ground_pounding_platform(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 1) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_ground_pounding_platform", 1, top);
+        return 0;
+    }
+
+    struct Object* platform = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_ground_pounding_platform"); return 0; }
+
+    lua_pushboolean(L, local_mario_ground_pounding_platform(platform));
+
+    return 1;
+}
+
+int smlua_func_local_mario_or_nearest(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 2) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_mario_or_nearest", 2, top);
+        return 0;
+    }
+
+    struct MarioState* candidate = (struct MarioState*)smlua_to_cobject(L, 1, LOT_MARIOSTATE);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_mario_or_nearest"); return 0; }
+    struct Object* obj = (struct Object*)smlua_to_cobject(L, 2, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 2, "local_mario_or_nearest"); return 0; }
+
+    smlua_push_object(L, LOT_MARIOSTATE, local_mario_or_nearest(candidate, obj), NULL);
+
+    return 1;
+}
+
   /////////////
  // mario.h //
 /////////////
@@ -17951,6 +18319,26 @@ int smlua_func_should_start_or_continue_dialog(lua_State* L) {
 
     extern u8 should_start_or_continue_dialog(struct MarioState* m, struct Object* object);
     lua_pushinteger(L, should_start_or_continue_dialog(m, object));
+
+    return 1;
+}
+
+int smlua_func_local_dialog_mario(lua_State* L) {
+    if (L == NULL) { return 0; }
+
+    int top = lua_gettop(L);
+    if (top != 2) {
+        LOG_LUA_LINE("Improper param count for '%s': Expected %u, Received %u", "local_dialog_mario", 2, top);
+        return 0;
+    }
+
+    struct Object* object = (struct Object*)smlua_to_cobject(L, 1, LOT_OBJECT);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 1, "local_dialog_mario"); return 0; }
+    struct MarioState* preferred = (struct MarioState*)smlua_to_cobject(L, 2, LOT_MARIOSTATE);
+    if (!gSmLuaConvertSuccess) { LOG_LUA("Failed to convert parameter %u for function '%s'", 2, "local_dialog_mario"); return 0; }
+
+    extern struct MarioState *local_dialog_mario(struct Object *object, struct MarioState *preferred);
+    smlua_push_object(L, LOT_MARIOSTATE, local_dialog_mario(object, preferred), NULL);
 
     return 1;
 }
@@ -38208,6 +38596,29 @@ void smlua_bind_functions_autogen(void) {
     // load.h
     smlua_bind_function(L, "set_sound_bank_override", smlua_func_set_sound_bank_override);
 
+    // local_players.h
+    smlua_bind_function(L, "get_local_player_count", smlua_func_get_local_player_count);
+    smlua_bind_function(L, "get_current_local_player", smlua_func_get_current_local_player);
+    smlua_bind_function(L, "is_local_player", smlua_func_is_local_player);
+    smlua_bind_function(L, "mario_is_local", smlua_func_mario_is_local);
+    smlua_bind_function(L, "local_mario", smlua_func_local_mario);
+    smlua_bind_function(L, "current_local_mario", smlua_func_current_local_mario);
+    smlua_bind_function(L, "nearest_local_mario_to_object", smlua_func_nearest_local_mario_to_object);
+    smlua_bind_function(L, "nearest_local_mario_to_point", smlua_func_nearest_local_mario_to_point);
+    smlua_bind_function(L, "nearest_local_mario_object", smlua_func_nearest_local_mario_object);
+    smlua_bind_function(L, "any_local_mario_within", smlua_func_any_local_mario_within);
+    smlua_bind_function(L, "is_local_mario_object", smlua_func_is_local_mario_object);
+    smlua_bind_function(L, "local_mario_on_platform", smlua_func_local_mario_on_platform);
+    smlua_bind_function(L, "local_mario_held_by", smlua_func_local_mario_held_by);
+    smlua_bind_function(L, "local_mario_using_object", smlua_func_local_mario_using_object);
+    smlua_bind_function(L, "local_mario_in_action", smlua_func_local_mario_in_action);
+    smlua_bind_function(L, "local_mario_with_cap_flag", smlua_func_local_mario_with_cap_flag);
+    smlua_bind_function(L, "local_mario_within_rectangle", smlua_func_local_mario_within_rectangle);
+    smlua_bind_function(L, "local_mario_above", smlua_func_local_mario_above);
+    smlua_bind_function(L, "cur_obj_collided_with_local_mario", smlua_func_cur_obj_collided_with_local_mario);
+    smlua_bind_function(L, "local_mario_ground_pounding_platform", smlua_func_local_mario_ground_pounding_platform);
+    smlua_bind_function(L, "local_mario_or_nearest", smlua_func_local_mario_or_nearest);
+
     // mario.h
     smlua_bind_function(L, "is_anim_at_end", smlua_func_is_anim_at_end);
     smlua_bind_function(L, "is_anim_past_end", smlua_func_is_anim_past_end);
@@ -38315,6 +38726,7 @@ void smlua_bind_functions_autogen(void) {
     smlua_bind_function(L, "cutscene_put_cap_on", smlua_func_cutscene_put_cap_on);
     smlua_bind_function(L, "mario_ready_to_speak", smlua_func_mario_ready_to_speak);
     smlua_bind_function(L, "should_start_or_continue_dialog", smlua_func_should_start_or_continue_dialog);
+    smlua_bind_function(L, "local_dialog_mario", smlua_func_local_dialog_mario);
     smlua_bind_function(L, "general_star_dance_handler", smlua_func_general_star_dance_handler);
     smlua_bind_function(L, "common_death_handler", smlua_func_common_death_handler);
     smlua_bind_function(L, "launch_mario_until_land", smlua_func_launch_mario_until_land);

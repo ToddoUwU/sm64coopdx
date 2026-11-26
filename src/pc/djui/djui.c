@@ -1,4 +1,7 @@
 #include "djui.h"
+#include "pc/lua/smlua_cobject.h"
+#include "game/local_players.h"
+#include "game/area.h"
 #include "djui_panel.h"
 #include "djui_panel_main.h"
 #include "djui_panel_language.h"
@@ -207,7 +210,20 @@ void djui_render(void) {
     // During interpolated frames, copy the generated display list without running the hook again
     if (!sDjuiRendered60fps) {
         Gfx *hookHudRenderStart = gDisplayListHead;
-        smlua_call_event_hooks(HOOK_ON_HUD_RENDER, djui_reset_hud_params);
+        if (split_screen_active()) {
+            // split screen: mods draw their HUD once per view, inside it, seeing that view's player as player 1
+            for (u8 view = 0; view < gLocalPlayerCount; view++) {
+                LOCAL_PLAYER_SCOPE(view);
+                select_render_view(view, gLocalPlayerCount);
+                smlua_set_hud_view(view);
+                djui_reset_hud_params();
+                smlua_call_event_hooks(HOOK_ON_HUD_RENDER, djui_reset_hud_params);
+            }
+            smlua_set_hud_view(0);
+            select_render_view(0, 1);
+        } else {
+            smlua_call_event_hooks(HOOK_ON_HUD_RENDER, djui_reset_hud_params);
+        }
         size_t gfxSize = sizeof(Gfx) * (gDisplayListHead - hookHudRenderStart);
         if (gfxSize > 0) {
             if (gfxSize > sHookHudRenderGfxSize) {

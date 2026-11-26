@@ -78,6 +78,7 @@ in_files = [
     "src/game/first_person_cam.h",
     "src/engine/behavior_script.h",
     "src/audio/seqplayer.h",
+    "src/game/local_players.h",
     "src/engine/lighting_engine.h",
     "src/pc/network/sync_object.h",
     "src/audio/load.h",
@@ -85,6 +86,7 @@ in_files = [
 ]
 
 override_allowed_functions = {
+    "src/game/local_players.h":             [ "get_local_player_count", "get_current_local_player", "is_local_player", "mario_is_local", "local_mario", "nearest_local_mario_to_object", "is_local_mario_object" ],
     "src/audio/external.h":                 [ " play_", "fade", "current_background", "stop_", "sound_banks", "drop_queued_background_music", "set_sound_moving_speed", "background_music_default_volume", "get_sound_pan", "sound_get_level_intensity", "set_audio_muted" ],
     "src/game/rumble_init.h":               [ "queue_rumble_", "reset_rumble_timers" ],
     "src/pc/djui/djui_popup.h":             [ "create" ],

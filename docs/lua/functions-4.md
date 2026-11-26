@@ -636,6 +636,452 @@ Overrides the soundbank, set to -1 to reset
 <br />
 
 ---
+# functions from local_players.h
+
+<br />
+
+
+## [get_local_player_count](#get_local_player_count)
+
+### Description
+Gets how many players are playing on this PC (1 unless local split screen is on)
+
+### Lua Example
+`local integerValue = get_local_player_count()`
+
+### Parameters
+- None
+
+### Returns
+- `integer`
+
+### C Prototype
+`u8 get_local_player_count(void);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [get_current_local_player](#get_current_local_player)
+
+### Description
+Gets the local player that the game is currently updating, rendering or drawing the HUD for
+
+### Lua Example
+`local integerValue = get_current_local_player()`
+
+### Parameters
+- None
+
+### Returns
+- `integer`
+
+### C Prototype
+`u8 get_current_local_player(void);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [is_local_player](#is_local_player)
+
+### Description
+Checks if the player in slot `playerIndex` is playing on this PC
+
+### Lua Example
+`local booleanValue = is_local_player(playerIndex)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| playerIndex | `integer` |
+
+### Returns
+- `boolean`
+
+### C Prototype
+`bool is_local_player(s32 playerIndex);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [mario_is_local](#mario_is_local)
+
+### Description
+Checks if `m` is the Mario of a player on this PC
+
+### Lua Example
+`local booleanValue = mario_is_local(m)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| m | [MarioState](structs.md#MarioState) |
+
+### Returns
+- `boolean`
+
+### C Prototype
+`bool mario_is_local(const struct MarioState *m);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario](#local_mario)
+
+### Description
+Gets the Mario of local player `localIndex` (0 = player 1)
+
+### Lua Example
+`local marioStateValue = local_mario(localIndex)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| localIndex | `integer` |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *local_mario(u8 localIndex);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [current_local_mario](#current_local_mario)
+
+### Lua Example
+`local marioStateValue = current_local_mario()`
+
+### Parameters
+- None
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *current_local_mario(void);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [nearest_local_mario_to_object](#nearest_local_mario_to_object)
+
+### Description
+Gets the nearest active Mario of a player on this PC to `obj`
+
+### Lua Example
+`local marioStateValue = nearest_local_mario_to_object(obj)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| obj | [Object](structs.md#Object) |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *nearest_local_mario_to_object(struct Object *obj);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [nearest_local_mario_to_point](#nearest_local_mario_to_point)
+
+### Lua Example
+`local marioStateValue = nearest_local_mario_to_point(x, y, z)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| x | `number` |
+| y | `number` |
+| z | `number` |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *nearest_local_mario_to_point(f32 x, f32 y, f32 z);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [nearest_local_mario_object](#nearest_local_mario_object)
+
+### Lua Example
+`local objectValue = nearest_local_mario_object(obj)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| obj | [Object](structs.md#Object) |
+
+### Returns
+- [Object](structs.md#Object)
+
+### C Prototype
+`struct Object *nearest_local_mario_object(struct Object *obj);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [any_local_mario_within](#any_local_mario_within)
+
+### Lua Example
+`local booleanValue = any_local_mario_within(obj, distance)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| obj | [Object](structs.md#Object) |
+| distance | `number` |
+
+### Returns
+- `boolean`
+
+### C Prototype
+`bool any_local_mario_within(struct Object *obj, f32 distance);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [is_local_mario_object](#is_local_mario_object)
+
+### Description
+Checks if `obj` is the Mario object of a player on this PC
+
+### Lua Example
+`local booleanValue = is_local_mario_object(obj)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| obj | [Object](structs.md#Object) |
+
+### Returns
+- `boolean`
+
+### C Prototype
+`bool is_local_mario_object(struct Object *obj);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_on_platform](#local_mario_on_platform)
+
+### Lua Example
+`local marioStateValue = local_mario_on_platform(platform)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| platform | [Object](structs.md#Object) |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *local_mario_on_platform(struct Object *platform);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_held_by](#local_mario_held_by)
+
+### Lua Example
+`local marioStateValue = local_mario_held_by(obj)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| obj | [Object](structs.md#Object) |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *local_mario_held_by(struct Object *obj);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_using_object](#local_mario_using_object)
+
+### Lua Example
+`local marioStateValue = local_mario_using_object(obj)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| obj | [Object](structs.md#Object) |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *local_mario_using_object(struct Object *obj);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_in_action](#local_mario_in_action)
+
+### Lua Example
+`local marioStateValue = local_mario_in_action(action)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| action | `integer` |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *local_mario_in_action(u32 action);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_with_cap_flag](#local_mario_with_cap_flag)
+
+### Lua Example
+`local marioStateValue = local_mario_with_cap_flag(capFlag)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| capFlag | `integer` |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *local_mario_with_cap_flag(u32 capFlag);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_within_rectangle](#local_mario_within_rectangle)
+
+### Lua Example
+`local booleanValue = local_mario_within_rectangle(minX, maxX, minZ, maxZ)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| minX | `integer` |
+| maxX | `integer` |
+| minZ | `integer` |
+| maxZ | `integer` |
+
+### Returns
+- `boolean`
+
+### C Prototype
+`bool local_mario_within_rectangle(s16 minX, s16 maxX, s16 minZ, s16 maxZ);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_above](#local_mario_above)
+
+### Lua Example
+`local booleanValue = local_mario_above(y)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| y | `number` |
+
+### Returns
+- `boolean`
+
+### C Prototype
+`bool local_mario_above(f32 y);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [cur_obj_collided_with_local_mario](#cur_obj_collided_with_local_mario)
+
+### Lua Example
+`local booleanValue = cur_obj_collided_with_local_mario()`
+
+### Parameters
+- None
+
+### Returns
+- `boolean`
+
+### C Prototype
+`bool cur_obj_collided_with_local_mario(void);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_ground_pounding_platform](#local_mario_ground_pounding_platform)
+
+### Lua Example
+`local booleanValue = local_mario_ground_pounding_platform(platform)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| platform | [Object](structs.md#Object) |
+
+### Returns
+- `boolean`
+
+### C Prototype
+`bool local_mario_ground_pounding_platform(struct Object *platform);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_mario_or_nearest](#local_mario_or_nearest)
+
+### Lua Example
+`local marioStateValue = local_mario_or_nearest(candidate, obj)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| candidate | [MarioState](structs.md#MarioState) |
+| obj | [Object](structs.md#Object) |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *local_mario_or_nearest(struct MarioState *candidate, struct Object *obj);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+---
 # functions from mario.h
 
 <br />
@@ -3029,6 +3475,27 @@ Checks if the dialog from a specified `object` should start or continue for this
 
 ### C Prototype
 `u8 should_start_or_continue_dialog(struct MarioState* m, struct Object* object);`
+
+[:arrow_up_small:](#)
+
+<br />
+
+## [local_dialog_mario](#local_dialog_mario)
+
+### Lua Example
+`local marioStateValue = local_dialog_mario(object, preferred)`
+
+### Parameters
+| Field | Type |
+| ----- | ---- |
+| object | [Object](structs.md#Object) |
+| preferred | [MarioState](structs.md#MarioState) |
+
+### Returns
+- [MarioState](structs.md#MarioState)
+
+### C Prototype
+`struct MarioState *local_dialog_mario(struct Object *object, struct MarioState *preferred);`
 
 [:arrow_up_small:](#)
 

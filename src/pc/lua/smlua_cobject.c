@@ -855,6 +855,42 @@ void smlua_cobject_init_globals(void) {
     EXPOSE_GLOBAL(LOT_HUDDISPLAY, gHudDisplay);
 }
 
+// Points entry `index` of the Lua array global `name` at element `target` of the C array `base`.
+static void smlua_set_array_global_entry(lua_State *L, const char *name, u16 lot, void *base, size_t stride, u8 index, u8 target) {
+    lua_getglobal(L, name);
+    if (!lua_istable(L, -1)) { lua_pop(L, 1); return; }
+    int t = lua_gettop(L);
+    lua_pushinteger(L, index);
+    smlua_push_object(L, lot, (u8 *) base + stride * target, NULL);
+    lua_settable(L, t);
+    lua_pop(L, 1);
+}
+
+// Entries 0 and `view` of the player arrays point at each other's player (0 restores the identity).
+static void smlua_swap_player_arrays(lua_State *L, u8 view, bool swapped) {
+    u8 first = swapped ? view : 0;
+    u8 other = swapped ? 0 : view;
+    smlua_set_array_global_entry(L, "gMarioStates", LOT_MARIOSTATE, gMarioStates, sizeof(struct MarioState), 0, first);
+    smlua_set_array_global_entry(L, "gMarioStates", LOT_MARIOSTATE, gMarioStates, sizeof(struct MarioState), view, other);
+    smlua_set_array_global_entry(L, "gNetworkPlayers", LOT_NETWORKPLAYER, gNetworkPlayers, sizeof(struct NetworkPlayer), 0, first);
+    smlua_set_array_global_entry(L, "gNetworkPlayers", LOT_NETWORKPLAYER, gNetworkPlayers, sizeof(struct NetworkPlayer), view, other);
+}
+
+void smlua_set_hud_view(u8 view) {
+    lua_State *L = gLuaState;
+    if (L == NULL || view >= MAX_LOCAL_PLAYERS) { return; }
+    static u8 sHudView = 0;
+
+    if (sHudView != 0) { smlua_swap_player_arrays(L, sHudView, false); }
+    if (view != 0) { smlua_swap_player_arrays(L, view, true); }
+    sHudView = view;
+
+    // the view's own camera, HUD values and first person state
+    smlua_push_object(L, LOT_LAKITUSTATE, &gCameraViews[view].lakituState, NULL); lua_setglobal(L, "gLakituState");
+    smlua_push_object(L, LOT_HUDDISPLAY, &gHudDisplays[view], NULL); lua_setglobal(L, "gHudDisplay");
+    smlua_push_object(L, LOT_FIRSTPERSONCAMERA, &gCameraViews[view].firstPersonCamera, NULL); lua_setglobal(L, "gFirstPersonCamera");
+}
+
 void smlua_cobject_init_per_file_globals(const char* path) {
     lua_State* L = gLuaState;
 

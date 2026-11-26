@@ -1017,6 +1017,31 @@
 
 <br />
 
+- local_players.h
+   - [get_local_player_count](functions-4.md#get_local_player_count)
+   - [get_current_local_player](functions-4.md#get_current_local_player)
+   - [is_local_player](functions-4.md#is_local_player)
+   - [mario_is_local](functions-4.md#mario_is_local)
+   - [local_mario](functions-4.md#local_mario)
+   - [current_local_mario](functions-4.md#current_local_mario)
+   - [nearest_local_mario_to_object](functions-4.md#nearest_local_mario_to_object)
+   - [nearest_local_mario_to_point](functions-4.md#nearest_local_mario_to_point)
+   - [nearest_local_mario_object](functions-4.md#nearest_local_mario_object)
+   - [any_local_mario_within](functions-4.md#any_local_mario_within)
+   - [is_local_mario_object](functions-4.md#is_local_mario_object)
+   - [local_mario_on_platform](functions-4.md#local_mario_on_platform)
+   - [local_mario_held_by](functions-4.md#local_mario_held_by)
+   - [local_mario_using_object](functions-4.md#local_mario_using_object)
+   - [local_mario_in_action](functions-4.md#local_mario_in_action)
+   - [local_mario_with_cap_flag](functions-4.md#local_mario_with_cap_flag)
+   - [local_mario_within_rectangle](functions-4.md#local_mario_within_rectangle)
+   - [local_mario_above](functions-4.md#local_mario_above)
+   - [cur_obj_collided_with_local_mario](functions-4.md#cur_obj_collided_with_local_mario)
+   - [local_mario_ground_pounding_platform](functions-4.md#local_mario_ground_pounding_platform)
+   - [local_mario_or_nearest](functions-4.md#local_mario_or_nearest)
+
+<br />
+
 - mario.h
    - [is_anim_at_end](functions-4.md#is_anim_at_end)
    - [is_anim_past_end](functions-4.md#is_anim_past_end)
@@ -1128,6 +1153,7 @@
    - [cutscene_put_cap_on](functions-4.md#cutscene_put_cap_on)
    - [mario_ready_to_speak](functions-4.md#mario_ready_to_speak)
    - [should_start_or_continue_dialog](functions-4.md#should_start_or_continue_dialog)
+   - [local_dialog_mario](functions-4.md#local_dialog_mario)
    - [general_star_dance_handler](functions-4.md#general_star_dance_handler)
    - [common_death_handler](functions-4.md#common_death_handler)
    - [launch_mario_until_land](functions-4.md#launch_mario_until_land)

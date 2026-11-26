@@ -139,6 +139,9 @@ extern s16 gCurrActStarNum;
 extern s16 gCurrAreaIndex;
 extern s16 gSavedCourseNum;
 extern s16 gPauseScreenMode;
+
+// Split screen: makes the display list being built draw into view `view` of `viewCount` (1 = whole window).
+void select_render_view(u8 view, u8 viewCount);
 extern s16 gSaveOptSelectIndex;
 
 extern struct SpawnInfo *gMarioSpawnInfo;

@@ -5474,6 +5474,142 @@ function set_sound_bank_override(bank)
     -- ...
 end
 
+--- @return integer
+--- Gets how many players are playing on this PC (1 unless local split screen is on)
+function get_local_player_count()
+    -- ...
+end
+
+--- @return integer
+--- Gets the local player that the game is currently updating, rendering or drawing the HUD for
+function get_current_local_player()
+    -- ...
+end
+
+--- @param playerIndex integer
+--- @return boolean
+--- Checks if the player in slot `playerIndex` is playing on this PC
+function is_local_player(playerIndex)
+    -- ...
+end
+
+--- @param m MarioState
+--- @return boolean
+--- Checks if `m` is the Mario of a player on this PC
+function mario_is_local(m)
+    -- ...
+end
+
+--- @param localIndex integer
+--- @return MarioState
+--- Gets the Mario of local player `localIndex` (0 = player 1)
+function local_mario(localIndex)
+    -- ...
+end
+
+--- @return MarioState
+function current_local_mario()
+    -- ...
+end
+
+--- @param obj Object
+--- @return MarioState
+--- Gets the nearest active Mario of a player on this PC to `obj`
+function nearest_local_mario_to_object(obj)
+    -- ...
+end
+
+--- @param x number
+--- @param y number
+--- @param z number
+--- @return MarioState
+function nearest_local_mario_to_point(x, y, z)
+    -- ...
+end
+
+--- @param obj Object
+--- @return Object
+function nearest_local_mario_object(obj)
+    -- ...
+end
+
+--- @param obj Object
+--- @param distance number
+--- @return boolean
+function any_local_mario_within(obj, distance)
+    -- ...
+end
+
+--- @param obj Object
+--- @return boolean
+--- Checks if `obj` is the Mario object of a player on this PC
+function is_local_mario_object(obj)
+    -- ...
+end
+
+--- @param platform Object
+--- @return MarioState
+function local_mario_on_platform(platform)
+    -- ...
+end
+
+--- @param obj Object
+--- @return MarioState
+function local_mario_held_by(obj)
+    -- ...
+end
+
+--- @param obj Object
+--- @return MarioState
+function local_mario_using_object(obj)
+    -- ...
+end
+
+--- @param action integer
+--- @return MarioState
+function local_mario_in_action(action)
+    -- ...
+end
+
+--- @param capFlag integer
+--- @return MarioState
+function local_mario_with_cap_flag(capFlag)
+    -- ...
+end
+
+--- @param minX integer
+--- @param maxX integer
+--- @param minZ integer
+--- @param maxZ integer
+--- @return boolean
+function local_mario_within_rectangle(minX, maxX, minZ, maxZ)
+    -- ...
+end
+
+--- @param y number
+--- @return boolean
+function local_mario_above(y)
+    -- ...
+end
+
+--- @return boolean
+function cur_obj_collided_with_local_mario()
+    -- ...
+end
+
+--- @param platform Object
+--- @return boolean
+function local_mario_ground_pounding_platform(platform)
+    -- ...
+end
+
+--- @param candidate MarioState
+--- @param obj Object
+--- @return MarioState
+function local_mario_or_nearest(candidate, obj)
+    -- ...
+end
+
 --- @param m MarioState
 --- @return integer
 --- Checks if Mario's current animation has reached its final frame (i.e., the last valid frame in the animation).<br>
@@ -6238,6 +6374,13 @@ end
 --- @return integer
 --- Checks if the dialog from a specified `object` should start or continue for this particular Mario. Ensures Mario is visible to enemies (i.e., not in certain invulnerable states) and, for remote players, validates the correct dialog object
 function should_start_or_continue_dialog(m, object)
+    -- ...
+end
+
+--- @param object Object
+--- @param preferred MarioState
+--- @return MarioState
+function local_dialog_mario(object, preferred)
     -- ...
 end
 

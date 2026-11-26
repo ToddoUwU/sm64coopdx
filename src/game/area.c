@@ -25,6 +25,7 @@
 #include "game/ingame_menu.h"
 #include "pc/network/network.h"
 #include "pc/lua/smlua_hooks.h"
+#include "pc/lua/smlua_cobject.h"
 #include "pc/djui/djui.h"
 #include "pc/djui/djui_hud_utils.h"
 #include "pc/djui/djui_panel_pause.h"
@@ -451,7 +452,7 @@ void play_transition_after_delay(s16 transType, s16 time, u8 red, u8 green, u8 b
 
 // Selects split screen view `view` of `viewCount` for the display list being built: drawing goes to that
 // view's rectangle of the window, and aspect-dependent code (HUD edges, culling, skybox) sees the view's shape.
-static void select_render_view(u8 view, u8 viewCount) {
+void select_render_view(u8 view, u8 viewCount) {
     gfx_set_view(view, viewCount);
     gSPView(gDisplayListHead++, view, viewCount);
     gSPViewport(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(&gViewportFullscreen));
@@ -476,7 +477,10 @@ static void render_game_view(void) {
         if (gServerSettings.nametags && !gDjuiInMainMenu) {
             nametags_render();
         }
+        // mods' HUD code sees this view's player as player 1 (gMarioStates[0], gHudDisplay, ...)
+        if (split_screen_active()) { smlua_set_hud_view(gCurrLocalPlayer); }
         smlua_call_event_hooks(HOOK_ON_HUD_RENDER_BEHIND, djui_reset_hud_params);
+        if (split_screen_active()) { smlua_set_hud_view(0); }
         djui_gfx_displaylist_end();
     }
     render_hud();

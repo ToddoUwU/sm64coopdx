@@ -167,6 +167,7 @@
 | numRedCoins | `integer` |  |
 | numSecrets | `integer` |  |
 | nextSyncID | `integer` | read-only |
+| cameras | `Array` <`Camera`> |  |
 
 [:arrow_up_small:](#)
 
@@ -1264,6 +1265,8 @@
 | prevScaleTimestamp | `integer` | read-only |
 | prevThrowMatrixTimestamp | `integer` | read-only |
 | skipInterpolationTimestamp | `integer` | read-only |
+| drawnInViewTimestamp | `integer` |  |
+| cameraToObjectTimestamp | `integer` |  |
 | animInfo | [AnimInfo](structs.md#AnimInfo) | read-only |
 | areaIndex | `integer` |  |
 | activeAreaIndex | `integer` |  |

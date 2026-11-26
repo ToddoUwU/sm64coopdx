@@ -94,4 +94,8 @@ void smlua_cobject_init_globals(void);
 void smlua_cobject_init_per_file_globals(const char* path);
 void smlua_bind_cobject(void);
 
+// Split screen: while HUD hooks draw `view`, Lua's gMarioStates[0] / gNetworkPlayers[0] are that view's player
+// (swapped with their own slot) and gLakituState / gHudDisplay / gFirstPersonCamera are that view's. 0 restores.
+void smlua_set_hud_view(u8 view);
+
 #endif

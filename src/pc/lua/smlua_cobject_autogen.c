@@ -193,30 +193,31 @@ static struct LuaObjectField sAnimationFields[LUA_ANIMATION_FIELD_COUNT] = {
     { "valuesLength",      LVT_U32,   offsetof(struct Animation, valuesLength),      true, LOT_NONE    },
 };
 
-#define LUA_AREA_FIELD_COUNT 21
+#define LUA_AREA_FIELD_COUNT 22
 static struct LuaObjectField sAreaFields[LUA_AREA_FIELD_COUNT] = {
-    { "camera",              LVT_COBJECT_P, offsetof(struct Area, camera),              false, LOT_CAMERA                                     },
-    { "dialog",              LVT_S32,       offsetof(struct Area, dialog),              false, LOT_NONE,         2, sizeof(s32)               },
-    { "flags",               LVT_S8,        offsetof(struct Area, flags),               false, LOT_NONE                                       },
-    { "index",               LVT_S8,        offsetof(struct Area, index),               false, LOT_NONE                                       },
-    { "instantWarps",        LVT_COBJECT_P, offsetof(struct Area, instantWarps),        false, LOT_INSTANTWARP                                },
-    { "localAreaTimer",      LVT_U32,       offsetof(struct Area, localAreaTimer),      true,  LOT_NONE                                       },
-    { "macroObjects",        LVT_S16_P,     offsetof(struct Area, macroObjects),        true,  LOT_POINTER                                    },
-    { "macroObjectsAltered", LVT_U8_P,      offsetof(struct Area, macroObjectsAltered), true,  LOT_POINTER                                    },
-    { "musicParam",          LVT_U16,       offsetof(struct Area, musicParam),          false, LOT_NONE                                       },
-    { "musicParam2",         LVT_U16,       offsetof(struct Area, musicParam2),         false, LOT_NONE                                       },
-    { "nextSyncID",          LVT_U32,       offsetof(struct Area, nextSyncID),          true,  LOT_NONE                                       },
-    { "numRedCoins",         LVT_U8,        offsetof(struct Area, numRedCoins),         false, LOT_NONE                                       },
-    { "numSecrets",          LVT_U8,        offsetof(struct Area, numSecrets),          false, LOT_NONE                                       },
-    { "objectSpawnInfos",    LVT_COBJECT_P, offsetof(struct Area, objectSpawnInfos),    true,  LOT_SPAWNINFO                                  },
-    { "paintingWarpNodes",   LVT_COBJECT_P, offsetof(struct Area, paintingWarpNodes),   true,  LOT_WARPNODE                                   },
-    { "root",                LVT_COBJECT_P, offsetof(struct Area, root),                false, LOT_GRAPHNODEROOT                              },
-    { "surfaceRooms",        LVT_S8_P,      offsetof(struct Area, surfaceRooms),        true,  LOT_POINTER                                    },
-    { "terrainData",         LVT_S16_P,     offsetof(struct Area, terrainData),         true,  LOT_POINTER                                    },
-    { "terrainType",         LVT_U16,       offsetof(struct Area, terrainType),         false, LOT_NONE                                       },
-//  { "unused28",            LVT_COBJECT_P, offsetof(struct Area, unused28),            false, LOT_???                                        }, <--- UNIMPLEMENTED
-    { "warpNodes",           LVT_COBJECT_P, offsetof(struct Area, warpNodes),           true,  LOT_OBJECTWARPNODE                             },
-    { "whirlpools",          LVT_COBJECT_P, offsetof(struct Area, whirlpools),          false, LOT_WHIRLPOOL,    2, sizeof(struct Whirlpool*) },
+    { "camera",              LVT_COBJECT_P, offsetof(struct Area, camera),              false, LOT_CAMERA                                                     },
+    { "cameras",             LVT_COBJECT_P, offsetof(struct Area, cameras),             false, LOT_CAMERA,       MAX_LOCAL_PLAYERS, sizeof(struct Camera*)    },
+    { "dialog",              LVT_S32,       offsetof(struct Area, dialog),              false, LOT_NONE,         2,                 sizeof(s32)               },
+    { "flags",               LVT_S8,        offsetof(struct Area, flags),               false, LOT_NONE                                                       },
+    { "index",               LVT_S8,        offsetof(struct Area, index),               false, LOT_NONE                                                       },
+    { "instantWarps",        LVT_COBJECT_P, offsetof(struct Area, instantWarps),        false, LOT_INSTANTWARP                                                },
+    { "localAreaTimer",      LVT_U32,       offsetof(struct Area, localAreaTimer),      true,  LOT_NONE                                                       },
+    { "macroObjects",        LVT_S16_P,     offsetof(struct Area, macroObjects),        true,  LOT_POINTER                                                    },
+    { "macroObjectsAltered", LVT_U8_P,      offsetof(struct Area, macroObjectsAltered), true,  LOT_POINTER                                                    },
+    { "musicParam",          LVT_U16,       offsetof(struct Area, musicParam),          false, LOT_NONE                                                       },
+    { "musicParam2",         LVT_U16,       offsetof(struct Area, musicParam2),         false, LOT_NONE                                                       },
+    { "nextSyncID",          LVT_U32,       offsetof(struct Area, nextSyncID),          true,  LOT_NONE                                                       },
+    { "numRedCoins",         LVT_U8,        offsetof(struct Area, numRedCoins),         false, LOT_NONE                                                       },
+    { "numSecrets",          LVT_U8,        offsetof(struct Area, numSecrets),          false, LOT_NONE                                                       },
+    { "objectSpawnInfos",    LVT_COBJECT_P, offsetof(struct Area, objectSpawnInfos),    true,  LOT_SPAWNINFO                                                  },
+    { "paintingWarpNodes",   LVT_COBJECT_P, offsetof(struct Area, paintingWarpNodes),   true,  LOT_WARPNODE                                                   },
+    { "root",                LVT_COBJECT_P, offsetof(struct Area, root),                false, LOT_GRAPHNODEROOT                                              },
+    { "surfaceRooms",        LVT_S8_P,      offsetof(struct Area, surfaceRooms),        true,  LOT_POINTER                                                    },
+    { "terrainData",         LVT_S16_P,     offsetof(struct Area, terrainData),         true,  LOT_POINTER                                                    },
+    { "terrainType",         LVT_U16,       offsetof(struct Area, terrainType),         false, LOT_NONE                                                       },
+//  { "unused28",            LVT_COBJECT_P, offsetof(struct Area, unused28),            false, LOT_???                                                        }, <--- UNIMPLEMENTED
+    { "warpNodes",           LVT_COBJECT_P, offsetof(struct Area, warpNodes),           true,  LOT_OBJECTWARPNODE                                             },
+    { "whirlpools",          LVT_COBJECT_P, offsetof(struct Area, whirlpools),          false, LOT_WHIRLPOOL,    2,                 sizeof(struct Whirlpool*) },
 };
 
 #define LUA_BEHAVIOR_DIALOGS_FIELD_COUNT 84
@@ -1107,14 +1108,16 @@ static struct LuaObjectField sGraphNodeMasterListFields[LUA_GRAPH_NODE_MASTER_LI
     { "node", LVT_COBJECT, offsetof(struct GraphNodeMasterList, node), true, LOT_GRAPHNODE },
 };
 
-#define LUA_GRAPH_NODE_OBJECT_FIELD_COUNT 27
+#define LUA_GRAPH_NODE_OBJECT_FIELD_COUNT 29
 static struct LuaObjectField sGraphNodeObjectFields[LUA_GRAPH_NODE_OBJECT_FIELD_COUNT] = {
     { "activeAreaIndex",            LVT_S8,        offsetof(struct GraphNodeObject, activeAreaIndex),            false, LOT_NONE      },
     { "angle",                      LVT_COBJECT,   offsetof(struct GraphNodeObject, angle),                      true,  LOT_VEC3S     },
     { "animInfo",                   LVT_COBJECT,   offsetof(struct GraphNodeObject, animInfo),                   true,  LOT_ANIMINFO  },
     { "areaIndex",                  LVT_S8,        offsetof(struct GraphNodeObject, areaIndex),                  false, LOT_NONE      },
     { "cameraToObject",             LVT_COBJECT,   offsetof(struct GraphNodeObject, cameraToObject),             true,  LOT_VEC3F     },
+    { "cameraToObjectTimestamp",    LVT_U32,       offsetof(struct GraphNodeObject, cameraToObjectTimestamp),    false, LOT_NONE      },
     { "disableAutomaticShadowPos",  LVT_BOOL,      offsetof(struct GraphNodeObject, disableAutomaticShadowPos),  false, LOT_NONE      },
+    { "drawnInViewTimestamp",       LVT_U32,       offsetof(struct GraphNodeObject, drawnInViewTimestamp),       false, LOT_NONE      },
     { "inited",                     LVT_BOOL,      offsetof(struct GraphNodeObject, inited),                     false, LOT_NONE      },
     { "node",                       LVT_COBJECT,   offsetof(struct GraphNodeObject, node),                       true,  LOT_GRAPHNODE },
     { "pos",                        LVT_COBJECT,   offsetof(struct GraphNodeObject, pos),                        true,  LOT_VEC3F     },
