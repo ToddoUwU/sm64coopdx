@@ -81,7 +81,7 @@ static void first_person_camera_update(void) {
 
         // update pitch
         if (!gFirstPersonCamera.forcePitch) {
-            gFirstPersonCamera.pitch -= sensY * (extStickY - 1.5f * mouse_y);
+            gFirstPersonCamera.pitch -= sensY * (extStickY - 1.5f * (gCurrLocalPlayer == 0 ? mouse_y : 0));
             gFirstPersonCamera.pitch = clamp(gFirstPersonCamera.pitch, -0x3F00, 0x3F00);
         }
 
@@ -90,7 +90,7 @@ static void first_person_camera_update(void) {
             if (m->controller->buttonDown & L_TRIG && gFirstPersonCamera.centerL) {
                 gFirstPersonCamera.yaw = m->faceAngle[1] + 0x8000;
             } else {
-                gFirstPersonCamera.yaw += sensX * (extStickX - 1.5f * mouse_x);
+                gFirstPersonCamera.yaw += sensX * (extStickX - 1.5f * (gCurrLocalPlayer == 0 ? mouse_x : 0));
             }
         }
     }

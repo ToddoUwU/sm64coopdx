@@ -452,6 +452,12 @@ void play_transition_after_delay(s16 transType, s16 time, u8 red, u8 green, u8 b
 
 // Selects split screen view `view` of `viewCount` for the display list being built: drawing goes to that
 // view's rectangle of the window, and aspect-dependent code (HUD edges, culling, skybox) sees the view's shape.
+u8 split_screen_view_count(void) {
+    // menus such as the act selector are areas without a 3D camera: they use the whole window
+    bool hasCamera = gCurrentArea != NULL && gCurrentArea->camera != NULL;
+    return (split_screen_active() && hasCamera) ? gLocalPlayerCount : 1;
+}
+
 void select_render_view(u8 view, u8 viewCount) {
     gfx_set_view(view, viewCount);
     gSPView(gDisplayListHead++, view, viewCount);
@@ -478,9 +484,10 @@ static void render_game_view(void) {
             nametags_render();
         }
         // mods' HUD code sees this view's player as player 1 (gMarioStates[0], gHudDisplay, ...)
-        if (split_screen_active()) { smlua_set_hud_view(gCurrLocalPlayer); }
+        bool perViewHud = split_screen_view_count() > 1;
+        if (perViewHud) { smlua_set_hud_view(gCurrLocalPlayer); }
         smlua_call_event_hooks(HOOK_ON_HUD_RENDER_BEHIND, djui_reset_hud_params);
-        if (split_screen_active()) { smlua_set_hud_view(0); }
+        if (perViewHud) { smlua_set_hud_view(0); }
         djui_gfx_displaylist_end();
     }
     render_hud();
@@ -493,7 +500,7 @@ void render_game(void) {
     dynos_update_gfx();
     if (gCurrentArea != NULL && !gWarpTransition.pauseRendering) {
         // one view per player on this PC (one view = the whole window, exactly as upstream)
-        u8 viewCount = split_screen_active() ? gLocalPlayerCount : 1;
+        u8 viewCount = split_screen_view_count();
         // with split screen, a dialog box is drawn in the view of the player who opened it
         bool dialogInView = viewCount > 1 && gMenuMode == -1 && get_dialog_id() != DIALOG_NONE;
         geo_begin_views(viewCount);

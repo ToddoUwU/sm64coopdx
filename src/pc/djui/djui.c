@@ -210,11 +210,12 @@ void djui_render(void) {
     // During interpolated frames, copy the generated display list without running the hook again
     if (!sDjuiRendered60fps) {
         Gfx *hookHudRenderStart = gDisplayListHead;
-        if (split_screen_active()) {
+        u8 viewCount = split_screen_view_count();
+        if (viewCount > 1) {
             // split screen: mods draw their HUD once per view, inside it, seeing that view's player as player 1
-            for (u8 view = 0; view < gLocalPlayerCount; view++) {
+            for (u8 view = 0; view < viewCount; view++) {
                 LOCAL_PLAYER_SCOPE(view);
-                select_render_view(view, gLocalPlayerCount);
+                select_render_view(view, viewCount);
                 smlua_set_hud_view(view);
                 djui_reset_hud_params();
                 smlua_call_event_hooks(HOOK_ON_HUD_RENDER, djui_reset_hud_params);

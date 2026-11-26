@@ -142,6 +142,8 @@ extern s16 gPauseScreenMode;
 
 // Split screen: makes the display list being built draw into view `view` of `viewCount` (1 = whole window).
 void select_render_view(u8 view, u8 viewCount);
+// Number of views to draw now: one per local player in a 3D area, 1 in menus or without split screen.
+u8 split_screen_view_count(void);
 extern s16 gSaveOptSelectIndex;
 
 extern struct SpawnInfo *gMarioSpawnInfo;

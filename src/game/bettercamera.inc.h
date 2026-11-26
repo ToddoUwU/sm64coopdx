@@ -262,7 +262,8 @@ static void newcam_rotate_button(void) {
     }
 
     // Mouse control
-    if (gNewCamera.isMouse && !gDjuiInMainMenu && !gDjuiChatBoxFocus && !gDjuiConsoleFocus) {
+    // the mouse belongs to player 1 (split screen players 2-4 use their gamepads)
+    if (gNewCamera.isMouse && gCurrLocalPlayer == 0 && !gDjuiInMainMenu && !gDjuiChatBoxFocus && !gDjuiConsoleFocus) {
         if (!gNewCamera.useDPad || !gNewCamera.directionLocked) {
             gNewCamera.yaw += newcam_ivrt(0) * mouse_x * 16.f * (gNewCamera.sensitivityX / 250.f);
         }

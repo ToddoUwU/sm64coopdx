@@ -405,8 +405,7 @@ static void patch_view_interpolated(f32 delta) {
             delta_interpolate_vec3f(gLakituState.focus, sView.backgroundPrevCameraFocus, focusCopy, delta);
         }
         // the view's skybox is regenerated in place (gfx_set_view gives it the view's aspect ratio)
-        u8 viewCount = split_screen_active() ? gLocalPlayerCount : 1;
-        gfx_set_view(gCurrLocalPlayer, viewCount);
+        gfx_set_view(gCurrLocalPlayer, sInterpViewCount);
         sBackgroundNode->fnNode.func(GEO_CONTEXT_RENDER, &sBackgroundNode->fnNode.node, NULL);
         gfx_set_view(0, 1);
 
