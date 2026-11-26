@@ -3614,19 +3614,23 @@ s32 cur_obj_check_grabbed_mario(void) {
 
 /* |description|Returns `TRUE` if the player performed an escape action during a grab|descriptionEnd| */
 s32 player_performed_grab_escape_action(void) {
-    static s32 grabReleaseState;
+    // the player on this PC being held mashes their own controller
+    static s32 sGrabReleaseStates[MAX_LOCAL_PLAYERS];
+    struct MarioState *held = local_mario_held_by(o);
+    u8 player = held ? (u8) held->playerIndex : 0;
+    struct Controller *controller = &gControllers[player];
     s32 result = FALSE;
 
-    if (gPlayer1Controller->stickMag < 30.0f) {
-        grabReleaseState = 0;
+    if (controller->stickMag < 30.0f) {
+        sGrabReleaseStates[player] = 0;
     }
 
-    if (grabReleaseState == 0 && gPlayer1Controller->stickMag > 40.0f) {
-        grabReleaseState = 1;
+    if (sGrabReleaseStates[player] == 0 && controller->stickMag > 40.0f) {
+        sGrabReleaseStates[player] = 1;
         result = TRUE;
     }
 
-    if (gPlayer1Controller->buttonPressed & A_BUTTON) {
+    if (controller->buttonPressed & A_BUTTON) {
         result = TRUE;
     }
 

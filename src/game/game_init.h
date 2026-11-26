@@ -42,6 +42,10 @@ extern s8 gEepromProbe;
 
 extern void (*gGoddardVblankCallback)(void);
 extern struct Controller *gPlayer1Controller;
+// Every local player's controller combined (split screen menus anyone can use); player 1's when alone.
+extern struct Controller gSharedLocalController;
+// Controller that drives shared menus: gSharedLocalController in split screen, player 1's otherwise.
+struct Controller *shared_menu_controller(void);
 extern struct Controller *gPlayer2Controller;
 extern struct Controller *gPlayer3Controller;
 extern struct DemoInput *gCurrDemoInput;

@@ -1420,7 +1420,7 @@ s32 play_mode_normal(void) {
             } else if (sCurrPlayMode == PLAY_MODE_NORMAL && pressed_pause()) {
                 lower_background_noise(1);
                 cancel_rumble();
-                gCameraMovementFlags |= CAM_MOVE_PAUSE_SCREEN;
+                local_cameras_set_pause_screen(true);
                 set_play_mode(PLAY_MODE_PAUSED);
             }
         }
@@ -1435,13 +1435,13 @@ s32 play_mode_paused(void) {
         set_menu_mode(RENDER_PAUSE_SCREEN);
     } else if (gPauseScreenMode == 1) {
         raise_background_noise(1);
-        gCameraMovementFlags &= ~CAM_MOVE_PAUSE_SCREEN;
+        local_cameras_set_pause_screen(false);
         set_play_mode(PLAY_MODE_NORMAL);
     } else if (gPauseScreenMode == 2) {
         extern s16 gPrevMenuMode;
         if (gPrevMenuMode > 1) { // Course complete screen
             raise_background_noise(1);
-            gCameraMovementFlags &= ~CAM_MOVE_PAUSE_SCREEN;
+            local_cameras_set_pause_screen(false);
         } else { // Pause menu
             level_trigger_warp(&gMarioStates[0], WARP_OP_EXIT);
         }
@@ -1464,7 +1464,7 @@ s32 play_mode_paused(void) {
     }*/
 
     if (!gLevelValues.zoomOutCameraOnPause || !network_check_singleplayer_pause()) {
-        gCameraMovementFlags &= ~CAM_MOVE_PAUSE_SCREEN;
+        local_cameras_set_pause_screen(false);
     }
     return 0;
 }
@@ -1475,14 +1475,14 @@ s32 play_mode_paused(void) {
  */
 s32 play_mode_frame_advance(void) {
     if (gPlayer1Controller->buttonPressed & D_JPAD) {
-        gCameraMovementFlags &= ~CAM_MOVE_PAUSE_SCREEN;
+        local_cameras_set_pause_screen(false);
         play_mode_normal();
     } else if (gPlayer1Controller->buttonPressed & START_BUTTON) {
-        gCameraMovementFlags &= ~CAM_MOVE_PAUSE_SCREEN;
+        local_cameras_set_pause_screen(false);
         raise_background_noise(1);
         set_play_mode(PLAY_MODE_NORMAL);
     } else {
-        gCameraMovementFlags |= CAM_MOVE_PAUSE_SCREEN;
+        local_cameras_set_pause_screen(true);
     }
 
     return 0;

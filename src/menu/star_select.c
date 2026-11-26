@@ -461,11 +461,11 @@ s32 lvl_update_obj_and_load_act_button_actions(UNUSED s32 arg, UNUSED s32 unused
     if (sActSelectorMenuTimer >= 11) {
         // If any of these buttons are pressed, play sound and go to course act
 #ifndef VERSION_EU
-        if ((gPlayer1Controller->buttonPressed & A_BUTTON)
-         || (gPlayer1Controller->buttonPressed & START_BUTTON)
-         || (gPlayer1Controller->buttonPressed & B_BUTTON)) {
+        if ((shared_menu_controller()->buttonPressed & A_BUTTON)
+         || (shared_menu_controller()->buttonPressed & START_BUTTON)
+         || (shared_menu_controller()->buttonPressed & B_BUTTON)) {
 #else
-        if ((gPlayer1Controller->buttonPressed & (A_BUTTON | START_BUTTON | B_BUTTON | Z_TRIG))) {
+        if ((shared_menu_controller()->buttonPressed & (A_BUTTON | START_BUTTON | B_BUTTON | Z_TRIG))) {
 #endif
             star_select_finish_selection();
         }

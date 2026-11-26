@@ -125,6 +125,8 @@ struct Camera *area_scoped_camera(struct Area *area);
 struct Camera *mario_area_camera(struct MarioState *m);
 // update_camera() / reset_camera() for every local player's camera in the current area.
 void update_local_cameras(void);
+// Sets or clears CAM_MOVE_PAUSE_SCREEN on every local camera (the pause menu freezes every view).
+void local_cameras_set_pause_screen(bool paused);
 // Checks if any local player's camera is running (or just finished) a cutscene.
 bool any_local_camera_in_cutscene(void);
 void reset_local_cameras(void);

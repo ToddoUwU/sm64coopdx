@@ -12645,3 +12645,13 @@ bool any_local_camera_in_cutscene(void) {
     }
     return false;
 }
+
+void local_cameras_set_pause_screen(bool paused) {
+    for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) {
+        if (paused) {
+            gCameraViews[i].cameraMovementFlags |= CAM_MOVE_PAUSE_SCREEN;
+        } else {
+            gCameraViews[i].cameraMovementFlags &= ~CAM_MOVE_PAUSE_SCREEN;
+        }
+    }
+}

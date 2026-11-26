@@ -130,6 +130,16 @@ f32 gDialogBoxScale = DEFAULT_DIALOG_BOX_SCALE;
 s16 gDialogScrollOffsetY = 0;
 s8 gDialogBoxType = DIALOG_TYPE_ROTATE;
 s32 gDialogID = DIALOG_NONE;
+// Local player who opened the current dialog box: it is drawn in their view and driven by their controller.
+u8 gDialogOwner = 0;
+
+// Dialog boxes read their owner's controller; the pause and course complete menus read anyone on this PC.
+static struct Controller *menu_controller(void) {
+    if (gMenuMode == -1 && gDialogID != DIALOG_NONE && is_local_player(gDialogOwner)) {
+        return &gControllers[gDialogOwner];
+    }
+    return shared_menu_controller();
+}
 s16 gLastDialogPageStrPos = 0;
 s16 gDialogTextPos = 0;
 #ifdef VERSION_EU
@@ -855,19 +865,19 @@ void handle_menu_scrolling(s8 scrollDirection, s8 *currentIndex, s8 minIndex, s8
     u8 index = 0;
 
     if (scrollDirection == MENU_SCROLL_VERTICAL) {
-        if (gPlayer1Controller->rawStickY > 60) {
+        if (menu_controller()->rawStickY > 60) {
             index++;
         }
 
-        if (gPlayer1Controller->rawStickY < -60) {
+        if (menu_controller()->rawStickY < -60) {
             index += 2;
         }
     } else if (scrollDirection == MENU_SCROLL_HORIZONTAL) {
-        if (gPlayer1Controller->rawStickX > 60) {
+        if (menu_controller()->rawStickX > 60) {
             index += 2;
         }
 
-        if (gPlayer1Controller->rawStickX < -60) {
+        if (menu_controller()->rawStickX < -60) {
             index++;
         }
     }
@@ -1104,6 +1114,7 @@ bool handle_dialog_hook(s32 dialogId) {
 void create_dialog_box(s32 dialog) {
     if (handle_dialog_hook(dialog) && gDialogID == DIALOG_NONE) {
         gDialogID = dialog;
+        gDialogOwner = gCurrLocalPlayer;
         gDialogBoxType = DIALOG_TYPE_ROTATE;
     }
 }
@@ -1111,6 +1122,7 @@ void create_dialog_box(s32 dialog) {
 void create_dialog_box_with_var(s32 dialog, s32 dialogVar) {
     if (handle_dialog_hook(dialog) && gDialogID == DIALOG_NONE) {
         gDialogID = dialog;
+        gDialogOwner = gCurrLocalPlayer;
         gDialogVariable = dialogVar;
         gDialogBoxType = DIALOG_TYPE_ROTATE;
     }
@@ -1119,6 +1131,7 @@ void create_dialog_box_with_var(s32 dialog, s32 dialogVar) {
 void create_dialog_inverted_box(s32 dialog) {
     if (handle_dialog_hook(dialog) && gDialogID == DIALOG_NONE) {
         gDialogID = dialog;
+        gDialogOwner = gCurrLocalPlayer;
         gDialogBoxType = DIALOG_TYPE_ZOOM;
     }
 }
@@ -1126,6 +1139,7 @@ void create_dialog_inverted_box(s32 dialog) {
 void create_dialog_box_with_response(s32 dialog) {
     if (handle_dialog_hook(dialog) && gDialogID == DIALOG_NONE) {
         gDialogID = dialog;
+        gDialogOwner = gCurrLocalPlayer;
         gDialogBoxType = DIALOG_TYPE_ROTATE;
         gLastDialogResponse = 1;
     }
@@ -1928,8 +1942,8 @@ void render_dialog_entries(void) {
         case DIALOG_STATE_VERTICAL:
             gDialogBoxOpenTimer = 0.0f;
 
-            if ((gPlayer1Controller->buttonPressed & A_BUTTON)
-                || (gPlayer1Controller->buttonPressed & B_BUTTON)) {
+            if ((menu_controller()->buttonPressed & A_BUTTON)
+                || (menu_controller()->buttonPressed & B_BUTTON)) {
                 if (gLastDialogPageStrPos == -1) {
                     handle_special_dialog_text(gDialogID);
                     gDialogBoxState = DIALOG_STATE_CLOSING;
@@ -2988,10 +3002,10 @@ s16 render_pause_courses_and_castle(void) {
                 }
 
 #ifdef VERSION_EU
-                if (gPlayer1Controller->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
+                if (menu_controller()->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
 #else
-                if (gPlayer1Controller->buttonPressed & A_BUTTON
-                 || gPlayer1Controller->buttonPressed & START_BUTTON)
+                if (menu_controller()->buttonPressed & A_BUTTON
+                 || menu_controller()->buttonPressed & START_BUTTON)
 #endif
                 {
                     bool allowExit = true;
@@ -3031,10 +3045,10 @@ s16 render_pause_courses_and_castle(void) {
                 }
 
 #ifdef VERSION_EU
-                if (gPlayer1Controller->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
+                if (menu_controller()->buttonPressed & (A_BUTTON | Z_TRIG | START_BUTTON))
 #else
-                if (gPlayer1Controller->buttonPressed & A_BUTTON
-                 || gPlayer1Controller->buttonPressed & START_BUTTON)
+                if (menu_controller()->buttonPressed & A_BUTTON
+                 || menu_controller()->buttonPressed & START_BUTTON)
 #endif
                 {
                     level_set_transition(0, NULL);
@@ -3053,10 +3067,10 @@ s16 render_pause_courses_and_castle(void) {
     }
 
     if (gDjuiPanelPauseCreated && !gDjuiInPlayerMenu) { shade_screen(); }
-    if (gPlayer1Controller->buttonPressed & R_TRIG) {
+    if (menu_controller()->buttonPressed & R_TRIG) {
         djui_panel_pause_create(NULL);
     }
-    if ((gPlayer1Controller->buttonPressed & L_TRIG) && network_allow_mod_dev_mode()) {
+    if ((menu_controller()->buttonPressed & L_TRIG) && network_allow_mod_dev_mode()) {
         network_mod_dev_mode_reload();
     }
 
@@ -3387,10 +3401,10 @@ s16 render_course_complete_screen(void) {
             render_save_confirmation(100, 86, &gDialogLineNum, 20);
 #endif
             if (gCourseDoneMenuTimer > 110
-                && (gPlayer1Controller->buttonPressed & A_BUTTON
-                 || gPlayer1Controller->buttonPressed & START_BUTTON
+                && (menu_controller()->buttonPressed & A_BUTTON
+                 || menu_controller()->buttonPressed & START_BUTTON
 #ifdef VERSION_EU
-                 || gPlayer1Controller->buttonPressed & Z_TRIG
+                 || menu_controller()->buttonPressed & Z_TRIG
 #endif
                 )) {
                 level_set_transition(0, NULL);

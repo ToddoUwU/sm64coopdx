@@ -59,6 +59,37 @@ static u16 sCurrFBNum = 0;
 u16 frameBufferIndex = 0;
 void (*gGoddardVblankCallback)(void) = NULL;
 struct Controller *gPlayer1Controller = &gControllers[0];
+struct Controller gSharedLocalController = { 0 };
+
+struct Controller *shared_menu_controller(void) {
+    return split_screen_active() ? &gSharedLocalController : gPlayer1Controller;
+}
+
+// Combines every local controller: buttons from anyone, the stick pushed furthest.
+static void update_shared_local_controller(void) {
+    struct Controller *shared = &gSharedLocalController;
+    struct Controller *strongestStick = &gControllers[0];
+    shared->buttonDown = 0;
+    shared->buttonPressed = 0;
+    shared->buttonReleased = 0;
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        struct Controller *c = &gControllers[i];
+        shared->buttonDown |= c->buttonDown;
+        shared->buttonPressed |= c->buttonPressed;
+        shared->buttonReleased |= c->buttonReleased;
+        if (c->stickMag > strongestStick->stickMag) { strongestStick = c; }
+    }
+    shared->rawStickX = strongestStick->rawStickX;
+    shared->rawStickY = strongestStick->rawStickY;
+    shared->stickX = strongestStick->stickX;
+    shared->stickY = strongestStick->stickY;
+    shared->stickMag = strongestStick->stickMag;
+    shared->extStickX = strongestStick->extStickX;
+    shared->extStickY = strongestStick->extStickY;
+    shared->port = gControllers[0].port;
+    shared->statusData = gControllers[0].statusData;
+    shared->controllerData = gControllers[0].controllerData;
+}
 struct Controller *gPlayer2Controller = &gControllers[1];
 // probably debug only, see note below
 struct Controller *gPlayer3Controller = &gControllers[2];
@@ -527,6 +558,8 @@ void read_controller_inputs(void) {
     gPlayer3Controller->buttonPressed = gPlayer1Controller->buttonPressed;
     gPlayer3Controller->buttonReleased = gPlayer1Controller->buttonReleased;
     gPlayer3Controller->buttonDown = gPlayer1Controller->buttonDown;*/
+
+    update_shared_local_controller();
 
     // Mouse Input
     u32 prev_mouse_window_buttons = mouse_window_buttons;
