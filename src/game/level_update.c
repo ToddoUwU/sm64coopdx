@@ -186,7 +186,23 @@ struct CreditsEntry sCreditsSequence[] = {
 };
 
 struct MarioState gMarioStates[MAX_PLAYERS] = { 0 };
-struct HudDisplay gHudDisplay;
+struct HudDisplay gHudDisplays[MAX_LOCAL_PLAYERS];
+
+void hud_set_flags_for_all_local_players(s16 flags) {
+    for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) { gHudDisplays[i].flags = flags; }
+}
+
+// Runs `fn` once per local player with that player in scope and gMarioState set to their Mario.
+static void for_each_local_player(void (*fn)(void)) {
+    struct MarioState *previousMario = gMarioState;
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        u8 previous = local_player_scope_begin(i);
+        gMarioState = &gMarioStates[i];
+        fn();
+        local_player_scope_end(previous);
+    }
+    gMarioState = previousMario;
+}
 s16 sCurrPlayMode;
 u16 D_80339ECA;
 s16 sTransitionTimer;
@@ -219,9 +235,11 @@ u8 level_control_timer_running(void) {
 u16 level_control_timer(s32 timerOp) {
     switch (timerOp) {
         case TIMER_CONTROL_SHOW:
-            gHudDisplay.flags |= HUD_DISPLAY_FLAG_TIMER;
+            for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) {
+                gHudDisplays[i].flags |= HUD_DISPLAY_FLAG_TIMER;
+                gHudDisplays[i].timer = 0;
+            }
             sTimerRunning = FALSE;
-            gHudDisplay.timer = 0;
             gControlTimerStartNat = 0;
             gControlTimerStopNat = 0;
             break;
@@ -241,9 +259,11 @@ u16 level_control_timer(s32 timerOp) {
             break;
 
         case TIMER_CONTROL_HIDE:
-            gHudDisplay.flags &= ~HUD_DISPLAY_FLAG_TIMER;
+            for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) {
+                gHudDisplays[i].flags &= ~HUD_DISPLAY_FLAG_TIMER;
+                gHudDisplays[i].timer = 0;
+            }
             sTimerRunning = FALSE;
-            gHudDisplay.timer = 0;
             gControlTimerStartNat = 0;
             gControlTimerStopNat = 0;
             break;
@@ -253,17 +273,22 @@ u16 level_control_timer(s32 timerOp) {
 }
 
 bool pressed_pause(void) {
-    if (gServerSettings.pauseAnywhere) {
-        if (get_dialog_id() == DIALOG_NONE && sCurrPlayMode == PLAY_MODE_NORMAL && sDelayedWarpOp == WARP_OP_NONE) {
-            return gPlayer1Controller->buttonPressed & START_BUTTON;
-        }
-    } else {
-        u32 dialogActive = get_dialog_id() != DIALOG_NONE;
-        u32 intangible = (gMarioState->action & ACT_FLAG_INTANGIBLE) != 0;
-        u32 firstPerson = gMarioState->action == ACT_FIRST_PERSON;
+    // any player on this PC can pause; without pause-anywhere, their own Mario must be in a pausable state
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        struct MarioState *m = &gMarioStates[i];
+        if (!(gControllers[i].buttonPressed & START_BUTTON)) { continue; }
+        if (gServerSettings.pauseAnywhere) {
+            if (get_dialog_id() == DIALOG_NONE && sCurrPlayMode == PLAY_MODE_NORMAL && sDelayedWarpOp == WARP_OP_NONE) {
+                return true;
+            }
+        } else {
+            u32 dialogActive = get_dialog_id() != DIALOG_NONE;
+            u32 intangible = (m->action & ACT_FLAG_INTANGIBLE) != 0;
+            u32 firstPerson = m->action == ACT_FIRST_PERSON;
 
-        if (!intangible && !dialogActive && !firstPerson && !gWarpTransition.isActive && sDelayedWarpOp == WARP_OP_NONE) {
-            return (gPlayer1Controller->buttonPressed & START_BUTTON);
+            if (!intangible && !dialogActive && !firstPerson && !gWarpTransition.isActive && sDelayedWarpOp == WARP_OP_NONE) {
+                return true;
+            }
         }
     }
 
@@ -449,7 +474,7 @@ void init_mario_after_warp(void) {
 
             // enforce bubble on area change
             if (gServerSettings.bubbleDeath) {
-                if (i == 0 && gMarioStates[i].numLives == -1) {
+                if (is_local_player(i) && gMarioStates[i].numLives == -1) {
                     mario_set_bubbled(&gMarioStates[i]);
                     gMarioStates[i].health = 0xFF;
                 }
@@ -457,22 +482,29 @@ void init_mario_after_warp(void) {
         }
 
         init_mario();
-        set_mario_initial_action(gMarioState, marioSpawnType, sWarpDest.arg);
 
-        // remove offset from local mario during warps
-        if (sWarpDest.type == WARP_TYPE_SAME_AREA && marioSpawnType != MARIO_SPAWN_DOOR_WARP) {
-            gMarioState[0].pos[0] = (s16)spawnNode->object->oPosX;
-            gMarioState[0].pos[1] = (s16)spawnNode->object->oPosY;
-            gMarioState[0].pos[2] = (s16)spawnNode->object->oPosZ;
-            if (gMarioState[0].marioObj != NULL) {
-                gMarioState[0].marioObj->oPosX = spawnNode->object->oPosX;
-                gMarioState[0].marioObj->oPosY = spawnNode->object->oPosY;
-                gMarioState[0].marioObj->oPosZ = spawnNode->object->oPosZ;
+        // every player on this PC arrives through the same warp
+        for (u8 i = 0; i < gLocalPlayerCount; i++) {
+            struct MarioState *m = &gMarioStates[i];
+            u8 previous = local_player_scope_begin(i);
+            set_mario_initial_action(m, marioSpawnType, sWarpDest.arg);
+
+            // remove offset from local mario during warps
+            if (sWarpDest.type == WARP_TYPE_SAME_AREA && marioSpawnType != MARIO_SPAWN_DOOR_WARP) {
+                m->pos[0] = (s16)spawnNode->object->oPosX;
+                m->pos[1] = (s16)spawnNode->object->oPosY;
+                m->pos[2] = (s16)spawnNode->object->oPosZ;
+                if (m->marioObj != NULL) {
+                    m->marioObj->oPosX = spawnNode->object->oPosX;
+                    m->marioObj->oPosY = spawnNode->object->oPosY;
+                    m->marioObj->oPosZ = spawnNode->object->oPosZ;
+                }
             }
-        }
 
-        gMarioState->interactObj = spawnNode->object;
-        gMarioState->usedObj = spawnNode->object;
+            m->interactObj = spawnNode->object;
+            m->usedObj = spawnNode->object;
+            local_player_scope_end(previous);
+        }
     }
 
     if (gCurrentArea) {
@@ -640,7 +672,9 @@ void warp_credits(void) {
     load_mario_area();
     init_mario();
 
-    set_mario_action(gMarioState, marioAction, 0);
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        set_mario_action(&gMarioStates[i], marioAction, 0);
+    }
 
     if (gCurrentArea) {
         reset_local_cameras();
@@ -668,7 +702,6 @@ struct InstantWarp *get_instant_warp(u8 index) {
 
 void check_instant_warp(void) {
     if (!gCurrentArea) { return; }
-    s16 cameraAngle;
     struct Surface *floor;
 
     if (gCurrLevelNum == LEVEL_CASTLE
@@ -676,47 +709,73 @@ void check_instant_warp(void) {
         return;
     }
 
-    if ((floor = gMarioStates[0].floor) != NULL) {
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        struct MarioState *m = &gMarioStates[i];
+        if ((floor = m->floor) == NULL) {
+            vec3f_copy(m->nonInstantWarpPos, m->pos);
+            continue;
+        }
         s32 index = floor->type - SURFACE_INSTANT_WARP_1B;
-        if (index >= INSTANT_WARP_INDEX_START && index < INSTANT_WARP_INDEX_STOP && gCurrentArea->instantWarps != NULL) {
-            struct InstantWarp *warp = &gCurrentArea->instantWarps[index];
-            if (warp->id != 0) {
+        if (index < INSTANT_WARP_INDEX_START || index >= INSTANT_WARP_INDEX_STOP || gCurrentArea->instantWarps == NULL) {
+            vec3f_copy(m->nonInstantWarpPos, m->pos);
+            continue;
+        }
+        struct InstantWarp *warp = &gCurrentArea->instantWarps[index];
+        if (warp->id == 0) {
+            vec3f_copy(m->nonInstantWarpPos, m->pos);
+            continue;
+        }
 
-                mario_drop_held_object(&gMarioStates[0]);
-                u8 changeOfArea = (gCurrAreaIndex != warp->area);
-                gMarioStates[0].pos[0] += warp->displacement[0];
-                gMarioStates[0].pos[1] += warp->displacement[1];
-                gMarioStates[0].pos[2] += warp->displacement[2];
-                vec3f_copy(gMarioStates[0].nonInstantWarpPos, gMarioStates[0].pos);
+        u8 changeOfArea = (gCurrAreaIndex != warp->area);
 
-                if (changeOfArea) {
-                    for (s32 i = 0; i < MAX_PLAYERS; i++) {
-                        gMarioStates[i].marioObj->oIntangibleTimer = 30;
-                    }
-                }
+        // The player on the warp floor moves. When the warp changes area, every player on this PC moves with it,
+        // because they always share one area.
+        bool moved[MAX_LOCAL_PLAYERS] = { false };
+        s16 cameraAngles[MAX_LOCAL_PLAYERS] = { 0 };
+        for (u8 j = 0; j < gLocalPlayerCount; j++) {
+            if (j != i && !changeOfArea) { continue; }
+            struct MarioState *mover = &gMarioStates[j];
+            moved[j] = true;
+            mario_drop_held_object(mover);
+            mover->pos[0] += warp->displacement[0];
+            mover->pos[1] += warp->displacement[1];
+            mover->pos[2] += warp->displacement[2];
+            vec3f_copy(mover->nonInstantWarpPos, mover->pos);
+            if (mover->marioObj != NULL) {
+                mover->marioObj->oPosX = mover->pos[0];
+                mover->marioObj->oPosY = mover->pos[1];
+                mover->marioObj->oPosZ = mover->pos[2];
+            }
+            struct Camera *camera = mario_area_camera(mover);
+            cameraAngles[j] = camera ? camera->yaw : 0;
+        }
 
-                gMarioStates[0].marioObj->oPosX = gMarioStates[0].pos[0];
-                gMarioStates[0].marioObj->oPosY = gMarioStates[0].pos[1];
-                gMarioStates[0].marioObj->oPosZ = gMarioStates[0].pos[2];
-
-                cameraAngle = gMarioStates[0].area->camera->yaw;
-                change_area(warp->area);
-
-                for (s32 i = 0; i < MAX_PLAYERS; i++) {
-                    gMarioStates[i].area = gCurrentArea;
-                }
-
-                warp_camera(warp->displacement[0], warp->displacement[1], warp->displacement[2]);
-                skip_camera_interpolation();
-                gMarioStates[0].area->camera->yaw = cameraAngle;
-
-                smlua_call_event_hooks(HOOK_ON_INSTANT_WARP, warp->area, warp->id, warp->displacement);
-
-                return;
+        if (changeOfArea) {
+            for (s32 k = 0; k < MAX_PLAYERS; k++) {
+                if (gMarioStates[k].marioObj != NULL) { gMarioStates[k].marioObj->oIntangibleTimer = 30; }
             }
         }
+
+        change_area(warp->area);
+
+        for (s32 k = 0; k < MAX_PLAYERS; k++) {
+            gMarioStates[k].area = gCurrentArea;
+        }
+
+        for (u8 j = 0; j < gLocalPlayerCount; j++) {
+            if (!moved[j]) { continue; }
+            u8 previous = local_player_scope_begin(j);
+            warp_camera(warp->displacement[0], warp->displacement[1], warp->displacement[2]);
+            skip_camera_interpolation();
+            struct Camera *camera = mario_area_camera(&gMarioStates[j]);
+            if (camera) { camera->yaw = cameraAngles[j]; }
+            local_player_scope_end(previous);
+        }
+
+        smlua_call_event_hooks(HOOK_ON_INSTANT_WARP, warp->area, warp->id, warp->displacement);
+
+        return;
     }
-    vec3f_copy(gMarioStates[0].nonInstantWarpPos, gMarioStates[0].pos);
 }
 
 s16 music_changed_through_warp(s16 arg) {
@@ -1060,8 +1119,10 @@ void initiate_delayed_warp(void) {
             switch (sDelayedWarpOp) {
                 case WARP_OP_GAME_OVER:
                     gChangeLevel = gLevelValues.entryLevel;
-                    gMarioStates[0].numLives = 4;
-                    gMarioStates[0].health = 0x880;
+                    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+                        gMarioStates[i].numLives = 4;
+                        gMarioStates[i].health = 0x880;
+                    }
                     break;
 
                 case WARP_OP_CREDITS_END:
@@ -1131,7 +1192,7 @@ void initiate_delayed_warp(void) {
     }
 }
 
-void update_hud_values(void) {
+static void update_hud_values_for_scoped_player(void) {
     if (gCurrCreditsEntry == NULL) {
         s16 numHealthWedges = gMarioState->health > 0 ? MIN(gMarioState->health >> 8, 8) : 0;
 
@@ -1203,6 +1264,11 @@ void update_hud_values(void) {
             gHudDisplay.flags &= ~HUD_DISPLAY_FLAG_EMPHASIZE_POWER;
         }
     }
+}
+
+// each local player's HUD follows their own Mario
+void update_hud_values(void) {
+    for_each_local_player(update_hud_values_for_scoped_player);
 }
 
 /**
@@ -1319,15 +1385,11 @@ s32 play_mode_normal(void) {
     check_instant_warp();
 
     if (sTimerRunning) {
-        gHudDisplay.timer = gNetworkAreaTimer - gControlTimerStartNat;
-        if (gHudDisplay.timer >= 17999) {
-            gHudDisplay.timer = 17999;
-        }
+        u16 timer = MIN(gNetworkAreaTimer - gControlTimerStartNat, 17999);
+        for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) { gHudDisplays[i].timer = timer; }
     } else if (gControlTimerStopNat > 0) {
-        gHudDisplay.timer = gControlTimerStopNat - gControlTimerStartNat;
-        if (gHudDisplay.timer >= 17999) {
-            gHudDisplay.timer = 17999;
-        }
+        u16 timer = MIN(gControlTimerStopNat - gControlTimerStartNat, 17999);
+        for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) { gHudDisplays[i].timer = timer; }
     }
 
     area_update_objects();
@@ -1479,7 +1541,7 @@ s32 play_mode_change_level(void) {
     }
 
     if (--sTransitionTimer == -1) {
-        gHudDisplay.flags = HUD_DISPLAY_NONE;
+        hud_set_flags_for_all_local_players(HUD_DISPLAY_NONE);
         sTransitionTimer = 0;
         sTransitionUpdate = NULL;
         if (gCurrActStarNum != 99) {
@@ -1500,7 +1562,7 @@ s32 play_mode_change_level(void) {
  */
 UNUSED static s32 play_mode_unused(void) {
     if (--sTransitionTimer == -1) {
-        gHudDisplay.flags = HUD_DISPLAY_NONE;
+        hud_set_flags_for_all_local_players(HUD_DISPLAY_NONE);
 
         if (sWarpDest.type != WARP_TYPE_NOT_WARPING) {
             return sWarpDest.levelNum;
@@ -1756,7 +1818,7 @@ s32 update_level(void) {
     s32 changeLevel = 0;
 
     if (gChangeLevel != -1) {
-        gHudDisplay.flags = HUD_DISPLAY_NONE;
+        hud_set_flags_for_all_local_players(HUD_DISPLAY_NONE);
         sTransitionTimer = 0;
         sTransitionUpdate = NULL;
         changeLevel = gChangeLevel;
@@ -1764,7 +1826,7 @@ s32 update_level(void) {
         gChangeLevelTransition = -1;
         return changeLevel;
     } else if (!gWarpTransition.isActive && sDelayedWarpOp == WARP_OP_NONE && gChangeLevelTransition != -1) {
-        gHudDisplay.flags = HUD_DISPLAY_NONE;
+        hud_set_flags_for_all_local_players(HUD_DISPLAY_NONE);
         sTransitionTimer = 0;
         sTransitionUpdate = NULL;
         changeLevel = gChangeLevelTransition;
@@ -1814,9 +1876,9 @@ s32 init_level(void) {
     gSpawnedStarHiddenCount = 0;
 
     if (gCurrCreditsEntry == NULL) {
-        gHudDisplay.flags = HUD_DISPLAY_DEFAULT;
+        hud_set_flags_for_all_local_players(HUD_DISPLAY_DEFAULT);
     } else {
-        gHudDisplay.flags = HUD_DISPLAY_NONE;
+        hud_set_flags_for_all_local_players(HUD_DISPLAY_NONE);
     }
 
     sTimerRunning = FALSE;
@@ -1957,7 +2019,7 @@ s32 lvl_init_from_save_file(UNUSED s16 arg0, s16 levelNum) {
     gCurrCourseNum = COURSE_NONE;
     gSavedCourseNum = COURSE_NONE;
     gCurrCreditsEntry = NULL;
-    gMarioStates[0].specialTripleJump = FALSE;
+    for (u8 i = 0; i < gLocalPlayerCount; i++) { gMarioStates[i].specialTripleJump = FALSE; }
 
     init_mario_from_save_file();
     disable_warp_checkpoint();
@@ -1987,7 +2049,7 @@ s32 lvl_set_current_level(s16 param, s16 levelNum) {
     if (gCurrLevelNum != LEVEL_BOWSER_1 && gCurrLevelNum != LEVEL_BOWSER_2
         && gCurrLevelNum != LEVEL_BOWSER_3) {
         gMarioState->numCoins = 0;
-        gHudDisplay.coins = 0;
+        for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) { gHudDisplays[i].coins = 0; }
         gCurrCourseStarFlags = save_file_get_star_flags(gCurrSaveFileNum - 1, gCurrCourseNum - 1);
     }
 
@@ -2046,7 +2108,7 @@ void fake_lvl_init_from_save_file(void) {
     if (gNetworkType == NT_NONE) { gNeverEnteredCastle = true; }
 
     gCurrCreditsEntry = NULL;
-    gMarioStates[0].specialTripleJump = false;
+    for (u8 i = 0; i < gLocalPlayerCount; i++) { gMarioStates[i].specialTripleJump = false; }
 
     init_mario_from_save_file();
     disable_warp_checkpoint();
@@ -2062,6 +2124,6 @@ void lvl_skip_credits(void) {
     gCurrActStarNum = 0;
     gCurrActNum = 0;
     gChangeLevel = gLevelValues.entryLevel;
-    gMarioStates[0].health = 0x880;
+    for (u8 i = 0; i < gLocalPlayerCount; i++) { gMarioStates[i].health = 0x880; }
     play_transition(0x09, 0x14, 0x00, 0x00, 0x00);
 }

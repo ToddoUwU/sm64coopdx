@@ -1537,6 +1537,15 @@ void update_mario_joystick_inputs(struct MarioState *m) {
 /**
  * Resolves wall collisions, and updates a variety of inputs.
  */
+// Checks if anyone besides `m` (online, or another player on this PC) is still playing in this area.
+static bool is_player_active_besides(struct MarioState *m) {
+    for (s32 i = 0; i < MAX_PLAYERS; i++) {
+        if (&gMarioStates[i] == m) { continue; }
+        if (is_player_active(&gMarioStates[i])) { return true; }
+    }
+    return false;
+}
+
 void update_mario_geometry_inputs(struct MarioState *m) {
     if (!m) { return; }
 
@@ -1596,7 +1605,7 @@ void update_mario_geometry_inputs(struct MarioState *m) {
             m->input |= INPUT_IN_POISON_GAS;
         }
 
-    } else if (!is_other_player_active()) {
+    } else if (!is_player_active_besides(m)) {
         level_trigger_warp(m, WARP_OP_DEATH);
     } else {
         vec3s_to_vec3f(m->pos, m->spawnInfo->startPos);
@@ -2320,8 +2329,8 @@ void init_single_mario(struct MarioState* m) {
         capObject->oMoveAngleYaw = 0;
     }*/
 
-    // force all other players to be invisible by default
-    if (playerIndex != 0) {
+    // force all other players to be invisible by default (players on this PC are always shown)
+    if (!is_local_player(playerIndex)) {
         m->marioObj->header.gfx.node.flags |= GRAPH_RENDER_INVISIBLE;
         m->wasNetworkVisible = false;
         gNetworkPlayers[playerIndex].fadeOpacity = 0;
@@ -2367,8 +2376,10 @@ void init_mario_from_save_file(void) {
     for (s32 i = 0; i < MAX_PLAYERS; i++) {
         init_mario_single_from_save_file(&gMarioStates[i], i);
     }
-    gHudDisplay.coins = 0;
-    gHudDisplay.wedges = 8;
+    for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) {
+        gHudDisplays[i].coins = 0;
+        gHudDisplays[i].wedges = 8;
+    }
 }
 
 void set_mario_particle_flags(struct MarioState* m, u32 flags, u8 clear) {

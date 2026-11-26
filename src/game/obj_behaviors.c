@@ -560,7 +560,9 @@ u8 is_player_active(struct MarioState* m) {
 
 /* |description|Checks if any player besides the local player is in the current course/act/level/area|descriptionEnd| */
 u8 is_other_player_active(void) {
+    // players on this PC (split screen) are not "other" players: they share this game
     for (s32 i = 1; i < MAX_PLAYERS; i++) {
+        if (is_local_player(i)) { continue; }
         struct MarioState *m = &gMarioStates[i];
         if (is_player_active(m)) { return TRUE; }
     }

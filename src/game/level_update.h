@@ -153,7 +153,12 @@ struct HudDisplay {
     /*0x0C*/ u16 timer;
 };
 
-extern struct HudDisplay gHudDisplay;
+#include "local_players.h"
+// HUD values of each local player (split screen); gHudDisplay is the HUD of the player in scope.
+extern struct HudDisplay gHudDisplays[MAX_LOCAL_PLAYERS];
+#define gHudDisplay (gHudDisplays[gCurrLocalPlayer])
+// Sets the HUD flags of every local player (level transitions, cutscenes that hide the HUD for everyone).
+void hud_set_flags_for_all_local_players(s16 flags);
 extern bool gNeverEnteredCastle;
 
 extern u32 gControlTimerStartNat;
