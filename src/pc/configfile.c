@@ -20,6 +20,8 @@
 #include "debuglog.h"
 #include "djui/djui_hud_utils.h"
 #include "game/save_file.h"
+#include "game/characters.h"
+#include "game/local_players.h"
 #include "pc/network/network_player.h"
 #include "pc/pc_main.h"
 
@@ -156,6 +158,11 @@ unsigned int configStickDeadzone                  = 16;
 unsigned int configRumbleStrength                 = 50;
 unsigned int configGamepadNumber                  = 0;
 bool         configBackgroundGamepad              = true;
+// local split screen: players on this PC (1 = off), and the SDL gamepad + character of players 2-4.
+// A gamepad value of 0 means "the next free gamepad"; N means SDL device index N-1.
+unsigned int configSplitscreenPlayers             = 1;
+unsigned int configSplitscreenGamepad[MAX_LOCAL_PLAYERS]   = { 0, 0, 0, 0 };
+unsigned int configSplitscreenCharacter[MAX_LOCAL_PLAYERS] = { CT_MARIO, CT_LUIGI, CT_TOAD, CT_WARIO };
 bool         configExtendedReports                = false;
 bool         configDisableGamepads                = false;
 bool         configUseStandardKeyBindingsChat     = false;
@@ -302,7 +309,14 @@ static const struct ConfigOption options[] = {
     {.name = "stick_deadzone",                 .type = CONFIG_TYPE_UINT, .uintValue = &configStickDeadzone},
     {.name = "rumble_strength",                .type = CONFIG_TYPE_UINT, .uintValue = &configRumbleStrength},
     {.name = "gamepad_number",                 .type = CONFIG_TYPE_UINT, .uintValue = &configGamepadNumber},
-    {.name = "background_gamepad",             .type = CONFIG_TYPE_UINT, .boolValue = &configBackgroundGamepad},
+    {.name = "background_gamepad",             .type = CONFIG_TYPE_BOOL, .boolValue = &configBackgroundGamepad},
+    {.name = "splitscreen_players",            .type = CONFIG_TYPE_UINT, .uintValue = &configSplitscreenPlayers},
+    {.name = "splitscreen_gamepad_2",          .type = CONFIG_TYPE_UINT, .uintValue = &configSplitscreenGamepad[1]},
+    {.name = "splitscreen_gamepad_3",          .type = CONFIG_TYPE_UINT, .uintValue = &configSplitscreenGamepad[2]},
+    {.name = "splitscreen_gamepad_4",          .type = CONFIG_TYPE_UINT, .uintValue = &configSplitscreenGamepad[3]},
+    {.name = "splitscreen_character_2",        .type = CONFIG_TYPE_UINT, .uintValue = &configSplitscreenCharacter[1]},
+    {.name = "splitscreen_character_3",        .type = CONFIG_TYPE_UINT, .uintValue = &configSplitscreenCharacter[2]},
+    {.name = "splitscreen_character_4",        .type = CONFIG_TYPE_UINT, .uintValue = &configSplitscreenCharacter[3]},
     {.name = "extended_reports",               .type = CONFIG_TYPE_BOOL, .boolValue = &configExtendedReports},
 #ifndef HANDHELD
     {.name = "disable_gamepads",               .type = CONFIG_TYPE_BOOL, .boolValue = &configDisableGamepads},
@@ -833,6 +847,12 @@ NEXT_OPTION:
     }
     if (gCLIOpts.width != 0) { configWindow.w = gCLIOpts.width; }
     if (gCLIOpts.height != 0) { configWindow.h = gCLIOpts.height; }
+
+    if (gCLIOpts.localPlayers != 0) { configSplitscreenPlayers = gCLIOpts.localPlayers; }
+    configSplitscreenPlayers = MAX(1, MIN(configSplitscreenPlayers, MAX_LOCAL_PLAYERS));
+    for (int i = 0; i < MAX_LOCAL_PLAYERS; i++) {
+        if (configSplitscreenCharacter[i] >= CT_MAX) { configSplitscreenCharacter[i] = CT_MARIO; }
+    }
 
     if (gCLIOpts.playerName[0]) { snprintf(configPlayerName, MAX_CONFIG_STRING, "%s", gCLIOpts.playerName); }
 

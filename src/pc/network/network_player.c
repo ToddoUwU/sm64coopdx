@@ -1,4 +1,5 @@
 #include "network_player.h"
+#include "game/local_players.h"
 #include "types.h"
 #include "object_fields.h"
 #include "game/mario_misc.h"
@@ -63,8 +64,29 @@ void network_player_update_model(u8 localIndex) {
     obj_set_model(m->marioObj, m->character->modelId);
 }
 
+// Split screen players 2-4 always share player 1's level, area and sync state.
+static void network_player_mirror_local_players(void) {
+    struct NetworkPlayer *np = gNetworkPlayerLocal;
+    if (np == NULL) { return; }
+    for (u8 i = 1; i < gLocalPlayerCount; i++) {
+        struct NetworkPlayer *localNp = &gNetworkPlayers[i];
+        if (!localNp->connected) { continue; }
+        localNp->currCourseNum      = np->currCourseNum;
+        localNp->currActNum         = np->currActNum;
+        localNp->currLevelNum       = np->currLevelNum;
+        localNp->currAreaIndex      = np->currAreaIndex;
+        localNp->currLevelAreaSeqId = np->currLevelAreaSeqId;
+        localNp->currLevelSyncValid = np->currLevelSyncValid;
+        localNp->currAreaSyncValid  = np->currAreaSyncValid;
+        localNp->currPositionValid  = true;
+        localNp->lastReceived       = np->lastReceived;
+    }
+}
+
 bool network_player_any_connected(void) {
+    // players on this PC (split screen) are not network connections
     for (s32 i = 1; i < MAX_PLAYERS; i++) {
+        if (is_local_player(i)) { continue; }
         if (gNetworkPlayers[i].connected) { return true; }
     }
     return false;
@@ -200,12 +222,15 @@ void network_player_update(void) {
         network_player_update_model(i);
     }
 
+    network_player_mirror_local_players();
+
     if (!network_player_any_connected()) { return; }
 
 
     for (s32 i = 1; i < MAX_PLAYERS; i++) {
         struct NetworkPlayer *np = &gNetworkPlayers[i];
         if (!np->connected && i > 0) { continue; }
+        if (is_local_player(i)) { continue; }
         float elapsed = (clock_elapsed() - np->lastPingSent);
         if (elapsed > NETWORK_PLAYER_PING_TIMEOUT) {
             network_send_ping(np);
@@ -217,6 +242,7 @@ void network_player_update(void) {
         for (s32 i = 1; i < MAX_PLAYERS; i++) {
             struct NetworkPlayer *np = &gNetworkPlayers[i];
             if (!np->connected && i > 0) { continue; }
+            if (is_local_player(i)) { continue; }
 
             float elapsed = (clock_elapsed() - np->lastReceived);
 #ifdef DEVELOPMENT
@@ -340,8 +366,9 @@ u8 network_player_connected(enum NetworkPlayerType type, u8 globalIndex, u8 mode
 
     for (s32 j = 0; j < MAX_RX_SEQ_IDS; j++) { np->rxSeqIds[j] = 0; np->rxPacketHash[j] = 0; }
 
-    // set up network player pointers
-    if (type == NPT_LOCAL) {
+    // set up network player pointers (split screen players 2-4 are local too, but this machine's network
+    // identity stays player 1)
+    if (type == NPT_LOCAL && localIndex == 0) {
         gNetworkPlayerLocal = np;
         if (gNetworkType == NT_SERVER) {
             gNetworkPlayerServer = gNetworkPlayerLocal;
@@ -351,7 +378,7 @@ u8 network_player_connected(enum NetworkPlayerType type, u8 globalIndex, u8 mode
     }
 
     // display connected popup
-    if (!gCurrentlyJoining && type != NPT_SERVER && (gNetworkType != NT_SERVER || type != NPT_LOCAL)) {
+    if (!gCurrentlyJoining && type != NPT_SERVER && type != NPT_LOCAL) {
         construct_player_popup(np, DLANG(NOTIF, CONNECTED), NULL);
     }
     LOG_INFO("player connected, local %d, global %d", localIndex, np->globalIndex);
@@ -449,7 +476,7 @@ void network_player_update_course_level(struct NetworkPlayer* np, s16 courseNum,
     // display popup
     bool inCredits = (np->currActNum == 99);
 
-    if (np->currCourseNum != courseNum && np->localIndex != 0 && !inCredits) {
+    if (np->currCourseNum != courseNum && !is_local_player(np->localIndex) && !inCredits) {
         bool matchingLocal = (np->currCourseNum == gNetworkPlayerLocal->currCourseNum) && (np->currActNum == gNetworkPlayerLocal->currActNum);
 
         if (matchingLocal && gNetworkPlayerLocal->currCourseNum != 0) {
@@ -479,6 +506,8 @@ void network_player_update_course_level(struct NetworkPlayer* np, s16 courseNum,
     if (mismatchLocal) {
         np->currPositionValid = false;
     }
+
+    if (np == gNetworkPlayerLocal) { network_player_mirror_local_players(); }
 
     if (mismatch) {
         if (np == gNetworkPlayerLocal) {

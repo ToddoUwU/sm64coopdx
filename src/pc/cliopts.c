@@ -30,6 +30,7 @@ static void print_help(void) {
     printf("--coopnet PASSWORD        Starts the game and creates a new CoopNet server.\n");
     printf("--playername PLAYERNAME   Starts the game with a specific playername.\n");
     printf("--playercount PLAYERCOUNT Starts the game with a specific player count limit.\n");
+    printf("--local-players COUNT     Plays COUNT (1-4) players on this PC in split screen when hosting.\n");
     printf("--skip-update-check       Skips the update check when loading the game.\n");
     printf("--no-discord              Disables discord integration.\n");
     printf("--disable-mods            Disables all mods that are already enabled.\n");
@@ -105,6 +106,8 @@ bool parse_cli_opts(int argc, char* argv[]) {
             arg_string("--playername <playername>", argv[++i], gCLIOpts.playerName, MAX_CONFIG_STRING);
         } else if (!strcmp(argv[i], "--playercount") && (i + 1) < argc) {
             arg_uint("--playercount <playercount>", argv[++i], &gCLIOpts.playerCount);
+        } else if (!strcmp(argv[i], "--local-players") && (i + 1) < argc) {
+            arg_uint("--local-players <count>", argv[++i], &gCLIOpts.localPlayers);
         } else if (!strcmp(argv[i], "--skip-update-check")) {
             gCLIOpts.skipUpdateCheck = true;
         } else if (!strcmp(argv[i], "--no-discord")) {

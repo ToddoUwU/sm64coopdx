@@ -2,6 +2,7 @@
 #include "coopnet/coopnet.h"
 #include <stdio.h>
 #include "network.h"
+#include "game/local_players.h"
 #include "object_fields.h"
 #include "game/level_update.h"
 #include "object_constants.h"
@@ -115,6 +116,12 @@ bool network_init(enum NetworkType inNetworkType, bool reconnecting) {
     act_select_hud_show(ACT_SELECT_HUD_ALL);
     gNetworkStartupTimer = 5 * 30;
 
+    // a split screen session hosts with every player on this PC: no sockets, nobody can join
+    local_players_end_session();
+    if (inNetworkType == NT_SERVER && local_players_requested_count() > 1) {
+        gNetworkSystem = &gNetworkSystemLocal;
+    }
+
     // sanity check network system
     if (gNetworkSystem == NULL) {
         LOG_ERROR("no network system attached");
@@ -170,6 +177,7 @@ bool network_init(enum NetworkType inNetworkType, bool reconnecting) {
         dynos_behavior_hook_all_custom_behaviors();
 
         network_player_connected(NPT_LOCAL, 0, configPlayerModel, &configPlayerPalette, configPlayerName, get_local_discord_id());
+        local_players_start_session();
         extern u8* gOverrideEeprom;
         gOverrideEeprom = NULL;
 
@@ -273,6 +281,8 @@ void network_send_to(u8 localIndex, struct Packet* p) {
     if (gNetworkType == NT_NONE) { LOG_ERROR("network type error none!"); return; }
     if (p->error) { LOG_ERROR("packet error!"); return; }
     if (gNetworkSystem == NULL) { LOG_ERROR("no network system attached"); return; }
+    // other players on this PC share this game: there is nothing to send them
+    if (localIndex != 0 && is_local_player(localIndex)) { return; }
     if (localIndex == 0 && !network_allow_unknown_local_index(p->buffer[0])) {
         LOG_ERROR("\n####################\nsending to myself, packetType: %d\n####################\n", p->packetType);
         // SOFT_ASSERT(false); - Crash?
@@ -393,6 +403,7 @@ void network_send(struct Packet* p) {
     for (s32 i = 1; i < MAX_PLAYERS; i++) {
         struct NetworkPlayer* np = &gNetworkPlayers[i];
         if (!np->connected) { continue; }
+        if (is_local_player(i)) { continue; }
 
         // don't send a packet to a player that can't receive it
         if (p->levelAreaMustMatch) {
@@ -689,6 +700,7 @@ void network_shutdown(bool sendLeaving, bool exiting, bool popup, bool reconnect
         network_player_shutdown(popup);
         gNetworkSystem->shutdown(reconnecting);
     }
+    local_players_end_session();
     if (gNetworkServerAddr != NULL) {
         free(gNetworkServerAddr);
         gNetworkServerAddr = NULL;

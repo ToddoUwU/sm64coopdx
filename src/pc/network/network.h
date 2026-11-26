@@ -119,6 +119,9 @@ extern u8 gDebugPacketOnBuffer;
 extern u32 gNetworkStartupTimer;
 
 // network.c
+// no-op network system for a local split screen session (network_local.c)
+extern struct NetworkSystem gNetworkSystemLocal;
+
 void network_set_system(enum NetworkSystemType nsType);
 bool network_init(enum NetworkType inNetworkType, bool reconnecting);
 void network_on_init_area(void);
