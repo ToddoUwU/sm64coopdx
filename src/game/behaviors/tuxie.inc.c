@@ -12,7 +12,7 @@ void play_penguin_walking_sound(s32 walk) {
 }
 
 void tuxies_mother_act_2(void) {
-    struct Object* player = gMarioStates[0].marioObj;
+    struct Object* player = nearest_local_mario_to_object(o)->marioObj;
     s32 angleToPlayer = obj_angle_to_object(o, player);
 
     f32 sp24;
@@ -47,7 +47,7 @@ u8 tuxies_mother_act_1_continue_dialog(void) { return (o->oAction == 1 && o->oSu
 
 void tuxies_mother_act_1(void) {
     // only local can interact with mother
-    struct MarioState* marioState = &gMarioStates[0];
+    struct MarioState* marioState = local_dialog_mario(o, NULL);
 
     s32 sp2C;
     s32 sp28;
@@ -112,7 +112,7 @@ u8 tuxies_mother_act_0_continue_dialog(void) { return (o->oAction == 0 && o->oSu
 
 void tuxies_mother_act_0(void) {
     // only local can interact with mother
-    struct MarioState* marioState = &gMarioStates[0];
+    struct MarioState* marioState = local_dialog_mario(o, NULL);
     s32 distanceToPlayer = marioState->visibleToObjects ? dist_between_objects(o, marioState->marioObj) : 10000;
 
     s32 sp2C;

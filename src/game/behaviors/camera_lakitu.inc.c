@@ -75,7 +75,7 @@ static void camera_lakitu_intro_act_trigger_cutscene(void) {
     if (player->oPosX > -544.0f && player->oPosX < 545.0f && player->oPosY > 800.0f
         && player->oPosZ > -2000.0f && player->oPosZ < -177.0f)
     {
-        if (should_start_or_continue_dialog(marioState, o) && set_mario_npc_dialog(&gMarioStates[0], 2, camera_lakitu_intro_act_show_dialog_continue_dialog) == 1) {
+        if (should_start_or_continue_dialog(marioState, o) && set_mario_npc_dialog(local_dialog_mario(o, marioState), 2, camera_lakitu_intro_act_show_dialog_continue_dialog) == 1) {
             o->oAction = CAMERA_LAKITU_INTRO_ACT_SPAWN_CLOUD;
         }
     }
@@ -86,7 +86,7 @@ static void camera_lakitu_intro_act_trigger_cutscene(void) {
  */
 static void camera_lakitu_intro_act_spawn_cloud(void) {
     struct MarioState* marioState = nearest_mario_state_to_object(o);
-    if (marioState && should_start_or_continue_dialog(marioState, o) && set_mario_npc_dialog(&gMarioStates[0], 2, camera_lakitu_intro_act_show_dialog_continue_dialog) == 2) {
+    if (marioState && should_start_or_continue_dialog(marioState, o) && set_mario_npc_dialog(local_dialog_mario(o, marioState), 2, camera_lakitu_intro_act_show_dialog_continue_dialog) == 2) {
         o->oAction = CAMERA_LAKITU_INTRO_ACT_UNK2;
 
         o->oPosX = 1800.0f;
@@ -179,7 +179,7 @@ static void camera_lakitu_intro_act_show_dialog(void) {
                     }
                 }
             }
-        } else if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 2, DIALOG_UNK2_FLAG_0, CUTSCENE_DIALOG, gBehaviorValues.dialogs.LakituIntroDialog, camera_lakitu_intro_act_show_dialog_continue_dialog) != 0) {
+        } else if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, marioState), 2, DIALOG_UNK2_FLAG_0, CUTSCENE_DIALOG, gBehaviorValues.dialogs.LakituIntroDialog, camera_lakitu_intro_act_show_dialog_continue_dialog) != 0) {
             o->oCameraLakituFinishedDialog = TRUE;
         }
     }

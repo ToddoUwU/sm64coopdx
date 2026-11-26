@@ -91,7 +91,7 @@ void piranha_plant_act_sleeping(void) {
 #endif
 
     struct Object* player = nearest_player_to_object(o);
-    struct Object* localPlayer = gMarioStates[0].marioObj;
+    struct Object* localPlayer = nearest_local_mario_to_object(o)->marioObj;
     s32 distanceToPlayer = player ? dist_between_objects(o, player) : 10000;
     s32 distanceToLocalPlayer = localPlayer ? dist_between_objects(o, localPlayer) : 10000;
     if (distanceToPlayer < 400.0f) {
@@ -378,7 +378,7 @@ void bhv_piranha_plant_loop(void) {
         if (draw_distance_scalar_is_infinite()) {
             cur_obj_unhide();
         } else {
-            struct Object* player = gMarioStates[0].marioObj;
+            struct Object* player = nearest_local_mario_to_object(o)->marioObj;
             f32 scalar = max(draw_distance_scalar(), 1.0f);
             if (player->oPosY > 3400.0f * scalar)
                 cur_obj_hide();

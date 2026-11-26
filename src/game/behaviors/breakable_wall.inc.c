@@ -6,7 +6,7 @@ void bhv_wf_breakable_wall_loop(void) {
         sync_object_init_field(o, o->oBreakableWallForce);
     }
 
-    if (o->oBreakableWallForce || gMarioStates[0].action == ACT_SHOT_FROM_CANNON) {
+    if (o->oBreakableWallForce || local_mario_in_action(ACT_SHOT_FROM_CANNON) != NULL) {
         cur_obj_become_tangible();
         if (o->oBreakableWallForce || obj_check_if_collided_with_object(o, gMarioObject)) {
             if (!o->oBreakableWallForce) {

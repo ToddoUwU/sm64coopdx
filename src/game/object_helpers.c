@@ -3324,6 +3324,8 @@ s32 cur_obj_update_dialog(struct MarioState* m, s32 actionArg, s32 dialogFlags, 
     UNUSED s32 doneTurning = TRUE;
 
     if (!is_local_player(m->playerIndex)) { return 0; }
+    // the dialog box, its camera cutscene and its input belong to the player talking
+    LOCAL_PLAYER_SCOPE_MARIO(m);
 
     switch (o->oDialogState) {
 #ifdef VERSION_JP
@@ -3406,6 +3408,8 @@ s32 cur_obj_update_dialog_with_cutscene(struct MarioState* m, s32 actionArg, s32
 
     if (!is_local_player(m->playerIndex)) { return 0; }
     if (!m->visibleToObjects) { return FALSE; }
+    // the dialog box, its camera cutscene and its input belong to the player talking
+    LOCAL_PLAYER_SCOPE_MARIO(m);
 
     switch (o->oDialogState) {
 #ifdef VERSION_JP

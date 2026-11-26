@@ -92,14 +92,20 @@ void bhv_spawned_star_loop(void) {
     if (o->oAction == 0) {
         // All of these are for checking if we spawned the star, If
         // we didn't. We don't need the time stop.
-        u8 playExclamationBoxCutscene = (is_nearest_mario_state_to_object(gMarioState, o) && o->oStarSpawnExtCutsceneFlags);
-        u8 playGenericSpawnCutscene = (o->parentObj != NULL && o->parentObj == gMarioStates[0].marioObj);
+        // the player on this PC who spawned it (or is nearest) watches the star appear
+        struct MarioState *watcher = nearest_local_mario_to_object(o);
+        for (u8 i = 0; i < gLocalPlayerCount; i++) {
+            if (o->parentObj != NULL && o->parentObj == gMarioStates[i].marioObj) { watcher = &gMarioStates[i]; }
+        }
+        u8 playExclamationBoxCutscene = (is_nearest_mario_state_to_object(watcher, o) && o->oStarSpawnExtCutsceneFlags);
+        u8 playGenericSpawnCutscene = (o->parentObj != NULL && o->parentObj == watcher->marioObj);
         u8 playCutscene = (playExclamationBoxCutscene || playGenericSpawnCutscene);
 
         if (o->oTimer == 0) {
-            if (playCutscene && ((gMarioStates[0].action & ACT_GROUP_MASK) != ACT_GROUP_CUTSCENE)) {
+            if (playCutscene && ((watcher->action & ACT_GROUP_MASK) != ACT_GROUP_CUTSCENE)) {
+                LOCAL_PLAYER_SCOPE_MARIO(watcher);
                 cutscene_object(CUTSCENE_STAR_SPAWN, o);
-                gMarioStates[0].freeze = 60;
+                watcher->freeze = 60;
                 set_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
                 o->activeFlags |= ACTIVE_FLAG_INITIATED_TIME_STOP;
             }
@@ -140,8 +146,8 @@ void bhv_spawned_star_loop(void) {
         }
         spawn_object(o, MODEL_NONE, bhvSparkleSpawn);
     } else if (o->oAction == 2) {
-        if (gCamera && gCamera->cutscene == 0 && gRecentCutscene == 0) {
-            gMarioStates[0].freeze = 0;
+        if (!any_local_camera_in_cutscene()) {
+            for (u8 i = 0; i < gLocalPlayerCount; i++) { gMarioStates[i].freeze = 0; }
             clear_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
             o->activeFlags &= ~ACTIVE_FLAG_INITIATED_TIME_STOP;
             o->oAction++;

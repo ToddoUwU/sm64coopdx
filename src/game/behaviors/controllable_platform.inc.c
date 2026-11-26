@@ -28,7 +28,7 @@ void bhv_controllable_platform_sub_loop(void) {
             if (o->oTimer < 30)
                 break;
 
-            if (gMarioStates[0].marioObj->platform == o) {
+            if (local_mario_on_platform(o) != NULL) {
                 D_80331694 = o->oBehParams2ndByte;
 #ifdef VERSION_SH
                 if (o->parentObj) { o->parentObj->header.gfx.node.flags &= ~GRAPH_RENDER_INVISIBLE; }

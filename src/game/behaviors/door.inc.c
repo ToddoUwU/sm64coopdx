@@ -20,7 +20,7 @@ void door_animation_and_reset(s32 sp18) {
 }
 
 u8 door_allow_walk_through(void) {
-    if (gCurrCourseNum != COURSE_NONE && gMarioStates[0].action == ACT_BUBBLED) { return TRUE; }
+    if (gCurrCourseNum != COURSE_NONE && local_mario_in_action(ACT_BUBBLED) != NULL) { return TRUE; }
     if (o->oAction == 0 || o->oAction > 2) { return FALSE; }
     if (o->oInteractType == INTERACT_WARP_DOOR) { return FALSE; }
 
@@ -34,7 +34,7 @@ u8 door_allow_walk_through(void) {
     s32 min = max / 4;
 
     // make non-solid immediately for local actions so the camera doesn't glitch out
-    if (gMarioStates[0].marioObj != NULL && (gMarioStates[0].action == ACT_PULLING_DOOR || gMarioStates[0].action == ACT_PUSHING_DOOR)) {
+    if (local_mario_in_action(ACT_PULLING_DOOR) != NULL || local_mario_in_action(ACT_PUSHING_DOOR) != NULL) {
         min = 0;
     }
 
@@ -76,12 +76,15 @@ void bhv_door_loop(void) {
     if (o->oAction != 100) {
         while (D_8032F300[sp1C].flag != (u32)~0) {
             if (cur_obj_clear_interact_status_flag(D_8032F300[sp1C].flag)) {
-                if (gMarioStates[0].usedObj == o) {
-                    u32 marioAction = gMarioStates[0].marioBodyState->action;
+                struct MarioState *doorUser = local_mario_using_object(o);
+                if (doorUser != NULL) {
+                    u32 marioAction = doorUser->marioBodyState->action;
                     u8 inActDoor = marioAction == ACT_PULLING_DOOR
                         || marioAction == ACT_PUSHING_DOOR
                         || marioAction == ACT_WARP_DOOR_SPAWN;
                     if (inActDoor) {
+                        // the door camera event belongs to the player going through
+                        LOCAL_PLAYER_SCOPE_MARIO(doorUser);
                         set_door_camera_event();
                     }
                 }

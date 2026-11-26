@@ -562,7 +562,7 @@ s32 bowser_set_anim_in_air(void) {
 }
 
 s32 bowser_land(void) {
-    struct Object* player = gMarioStates[0].marioObj;
+    struct Object* player = nearest_local_mario_to_object(o)->marioObj;
     s32 distanceToPlayer = dist_between_objects(o, player);
 
     if (o->oMoveFlags & OBJ_MOVE_LANDED) {
@@ -1003,8 +1003,8 @@ s32 bowser_dead_not_bits_end(void) {
         bowser_dead_hide();
         spawn_triangle_break_particles(20, 116, 1.0f, 0);
         bowser_spawn_grand_star_key();
-        if (gMarioStates[0].visibleToObjects) {
-            set_mario_npc_dialog(&gMarioStates[0], 0, NULL);
+        if (local_dialog_mario(o, NULL)->visibleToObjects) {
+            set_mario_npc_dialog(local_dialog_mario(o, NULL), 0, NULL);
         }
         return 1;
     }

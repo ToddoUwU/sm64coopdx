@@ -42,7 +42,7 @@ void bhv_tumbling_bridge_platform_loop(void) {
     }
     switch (o->oAction) {
         case 0:
-            if ((o->oInteractStatus & INT_STATUS_INTERACTED) || gMarioStates[0].marioObj->platform == o) {
+            if ((o->oInteractStatus & INT_STATUS_INTERACTED) || local_mario_on_platform(o) != NULL) {
                 o->oAction++;
                 o->oTumblingBridgeUnkF4 = random_sign() * 0x80;
                 if (!(o->oInteractStatus & INT_STATUS_INTERACTED)) {

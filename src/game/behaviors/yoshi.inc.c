@@ -15,11 +15,24 @@ static u8 yoshi_talk_loop_continue_dialog(void) {
     return sYoshiTalkingState == 0 || sYoshiTalkingState == 1;
 }
 
+// The Mario on this PC that Yoshi talks to (NULL when Yoshi talks to an online player).
+static struct MarioState *yoshi_local_talker(void) {
+    struct NetworkPlayer *np = network_player_from_global_index(o->globalPlayerIndex);
+    if (np == NULL || !is_local_player(np->localIndex)) { return NULL; }
+    return &gMarioStates[np->localIndex];
+}
+
+static void yoshi_push_local_marios_away(void) {
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        push_mario_out_of_object(&gMarioStates[i], o, -10.0f);
+    }
+}
+
 void bhv_yoshi_override_ownership(u8* shouldOverride, u8* shouldOwn) {
     *shouldOverride = o->oAction == YOSHI_ACT_TALK;
     *shouldOwn = false;
     if (*shouldOverride) {
-        *shouldOwn = (gNetworkPlayerLocal->globalIndex == o->globalPlayerIndex);
+        *shouldOwn = (yoshi_local_talker() != NULL);
     }
 }
 
@@ -117,7 +130,7 @@ void yoshi_idle_loop(void) {
 void yoshi_talk_loop(void) {
     cur_obj_become_intangible();
     sYoshiTalkingState = 1;
-    push_mario_out_of_object(&gMarioStates[0], o, -10.0f);
+    yoshi_push_local_marios_away();
     struct NetworkPlayer* np = network_player_from_global_index(o->globalPlayerIndex);
     if (!np) {
         // go back to idle action as the player is no longer active
@@ -128,14 +141,15 @@ void yoshi_talk_loop(void) {
     struct Object* player = marioState ? marioState->marioObj : NULL;
     s32 angleToPlayer = player ? obj_angle_to_object(o, player) : 0;
 
-    if (np->localIndex != 0) {
+    if (!is_local_player(np->localIndex)) {
         cur_obj_init_animation((s16) o->oMoveAngleYaw == angleToPlayer ? 0 : 1);
         return;
     }
 
     if ((s16) o->oMoveAngleYaw == angleToPlayer) {
         cur_obj_init_animation(0);
-        if (set_mario_npc_dialog(&gMarioStates[0], 1, yoshi_talk_loop_continue_dialog) == 2) {
+        LOCAL_PLAYER_SCOPE_MARIO(marioState);
+        if (set_mario_npc_dialog(marioState, 1, yoshi_talk_loop_continue_dialog) == 2) {
             if (cutscene_object_with_dialog(CUTSCENE_DIALOG, o, gBehaviorValues.dialogs.YoshiDialog)) {
                 o->oInteractStatus = 0;
                 o->oHomeX = sYoshiHomeLocations[2];
@@ -152,19 +166,22 @@ void yoshi_talk_loop(void) {
 }
 
 void yoshi_walk_and_jump_off_roof_loop(void) {
-    push_mario_out_of_object(&gMarioStates[0], o, -10.0f);
+    yoshi_push_local_marios_away();
     cur_obj_become_intangible();
     s16 animFrame = o->header.gfx.animInfo.animFrame;
 
     o->oForwardVel = 10.0f;
     object_step();
     cur_obj_init_animation(1);
+    struct MarioState *talker = yoshi_local_talker();
     if (o->oTimer == 0
-    && o->globalPlayerIndex == gNetworkPlayerLocal->globalIndex
-    && gMarioStates[0].interactObj == o
-    && (gMarioStates[0].action == ACT_READING_NPC_DIALOG
-    ||  gMarioStates[0].action == ACT_WAITING_FOR_DIALOG))
+    && talker != NULL
+    && talker->interactObj == o
+    && (talker->action == ACT_READING_NPC_DIALOG
+    ||  talker->action == ACT_WAITING_FOR_DIALOG)) {
+        LOCAL_PLAYER_SCOPE_MARIO(talker);
         cutscene_object(CUTSCENE_STAR_SPAWN, o);
+    }
 
     o->oMoveAngleYaw = approach_s16_symmetric(o->oMoveAngleYaw, o->oYoshiTargetYaw, 0x500);
     if (is_point_close_to_object(o, o->oHomeX, 3174.0f, o->oHomeZ, 200)) {
@@ -182,7 +199,7 @@ void yoshi_walk_and_jump_off_roof_loop(void) {
 }
 
 void yoshi_finish_jumping_and_despawn_loop(void) {
-    push_mario_out_of_object(&gMarioStates[0], o, -10.0f);
+    yoshi_push_local_marios_away();
     cur_obj_become_intangible();
     cur_obj_extend_animation_if_at_end();
     obj_move_xyz_using_fvel_and_yaw(o);
@@ -196,11 +213,13 @@ void yoshi_finish_jumping_and_despawn_loop(void) {
 
 void yoshi_give_present_loop(void) {
     cur_obj_become_intangible();
-    push_mario_out_of_object(&gMarioStates[0], o, -10.0f);
-    if (gNetworkPlayerLocal->globalIndex == o->globalPlayerIndex) {
+    yoshi_push_local_marios_away();
+    struct MarioState *talker = yoshi_local_talker();
+    if (talker != NULL) {
+        LOCAL_PLAYER_SCOPE_MARIO(talker);
         if (gHudDisplay.lives == 100) {
             play_sound(SOUND_GENERAL_COLLECT_1UP, gGlobalSoundSource);
-            gMarioStates[0].specialTripleJump = true;
+            talker->specialTripleJump = true;
             if (sYoshiNeeded) {
                 sYoshiTalkingState = 2;
                 o->oAction = YOSHI_ACT_IDLE;
@@ -212,7 +231,7 @@ void yoshi_give_present_loop(void) {
 
         if ((gGlobalTimer & 0x03) == 0) {
             play_sound(SOUND_MENU_YOSHI_GAIN_LIVES, gGlobalSoundSource);
-            gMarioState->numLives++;
+            talker->numLives++;
         }
     }
 }
@@ -320,13 +339,16 @@ void bhv_yoshi_loop(void) {
     }
 
     // sanity check reading dialog
-    if (gMarioStates[0].interactObj == o
-    && gNetworkPlayerLocal->globalIndex != o->globalPlayerIndex
-    && o->oAction != YOSHI_ACT_IDLE
-    && o->oAction != YOSHI_ACT_WALK
-    && (gMarioStates[0].action == ACT_READING_NPC_DIALOG
-    ||  gMarioStates[0].action == ACT_WAITING_FOR_DIALOG)) {
-        set_mario_action(&gMarioStates[0], ACT_IDLE, 0);
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        struct MarioState *m = &gMarioStates[i];
+        if (m->interactObj == o
+        && m != yoshi_local_talker()
+        && o->oAction != YOSHI_ACT_IDLE
+        && o->oAction != YOSHI_ACT_WALK
+        && (m->action == ACT_READING_NPC_DIALOG
+        ||  m->action == ACT_WAITING_FOR_DIALOG)) {
+            set_mario_action(m, ACT_IDLE, 0);
+        }
     }
 
     if (sOverrideYoshiAlive) {

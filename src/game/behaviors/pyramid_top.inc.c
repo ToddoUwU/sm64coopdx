@@ -155,7 +155,7 @@ void bhv_pyramid_top_fragment_loop(void) {
  */
 void bhv_pyramid_pillar_touch_detector_loop(void) {
     cur_obj_become_tangible();
-    if ((o->oInteractStatus & INT_STATUS_INTERACTED) || obj_check_if_collided_with_object(o, gMarioStates[0].marioObj) == 1) {
+    if ((o->oInteractStatus & INT_STATUS_INTERACTED) || cur_obj_collided_with_local_mario()) {
         // Increase the pyramid top's count of pillars touched.
         if (o->parentObj) {
             o->parentObj->oPyramidTopPillarsTouched++;

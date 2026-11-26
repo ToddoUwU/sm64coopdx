@@ -211,14 +211,14 @@ void chuckya_move(void) {
 }
 
 void bhv_chuckya_override_ownership(u8* shouldOverride, u8* shouldOwn) {
-    *shouldOverride = (gMarioStates[0].heldByObj == o);
+    *shouldOverride = (local_mario_held_by(o) != NULL);
     if (*shouldOverride) {
         *shouldOwn = true;
     }
 }
 
 u8 bhv_chuckya_ignore_if_true(void) {
-    return (gMarioStates[0].heldByObj == o);
+    return (local_mario_held_by(o) != NULL);
 }
 
 void bhv_chuckya_loop(void) {

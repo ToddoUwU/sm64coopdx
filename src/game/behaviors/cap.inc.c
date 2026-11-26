@@ -196,21 +196,24 @@ void bhv_normal_cap_init(void) {
 }
 
 void normal_cap_set_save_flags(void) {
-    if (o->oBehParams - 1 != 0) { return; }
+    // only a cap of a player on this PC updates the save file (oBehParams = owner's player index + 1)
+    s32 capOwner = o->oBehParams - 1;
+    if (!is_local_player(capOwner)) { return; }
+    struct MarioState *owner = &gMarioStates[capOwner];
 
     save_file_clear_flags(SAVE_FLAG_CAP_ON_GROUND);
 
     switch (gCurrCourseNum) {
         case COURSE_SL:
-            gMarioStates[0].cap = SAVE_FLAG_CAP_ON_MR_BLIZZARD;
+            owner->cap = SAVE_FLAG_CAP_ON_MR_BLIZZARD;
             break;
 
         case COURSE_TTM:
-            gMarioStates[0].cap = SAVE_FLAG_CAP_ON_UKIKI;
+            owner->cap = SAVE_FLAG_CAP_ON_UKIKI;
             break;
 
         default:
-            gMarioStates[0].cap = SAVE_FLAG_CAP_ON_KLEPTO;
+            owner->cap = SAVE_FLAG_CAP_ON_KLEPTO;
             break;
     }
 }

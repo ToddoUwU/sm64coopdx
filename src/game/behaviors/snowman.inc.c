@@ -139,11 +139,11 @@ void bhv_snowmans_bottom_loop(void) {
                 && is_local_player(marioState->playerIndex)
                 && should_start_or_continue_dialog(marioState, o)
                 && (is_point_within_radius_of_mario(o->oPosX, o->oPosY, o->oPosZ, 400) == 1)
-                && set_mario_npc_dialog(&gMarioStates[0], 1, bhv_snowmans_bottom_loop_continue_dialog)
+                && set_mario_npc_dialog(local_dialog_mario(o, NULL), 1, bhv_snowmans_bottom_loop_continue_dialog)
                 && cutscene_object_with_dialog(CUTSCENE_DIALOG, o, gBehaviorValues.dialogs.SnowmanHeadBodyDialog)) {
                 o->oForwardVel = 10.0f;
                 o->oAction = 1;
-                set_mario_npc_dialog(&gMarioStates[0], 0, NULL);
+                set_mario_npc_dialog(local_dialog_mario(o, NULL), 0, NULL);
                 network_send_object(o);
             }
             break;
@@ -215,7 +215,7 @@ void bhv_snowmans_head_loop(void) {
 
     switch (o->oAction) {
         case 0:
-            if (trigger_obj_dialog_when_facing(&gMarioStates[0], &o->oSnowmansHeadUnkF4, gBehaviorValues.dialogs.SnowmanHeadDialog, 400.0f, 1, bhv_snowmans_head_action_0_continue_dialog))
+            if (trigger_obj_dialog_when_facing(local_dialog_mario(o, NULL), &o->oSnowmansHeadUnkF4, gBehaviorValues.dialogs.SnowmanHeadDialog, 400.0f, 1, bhv_snowmans_head_action_0_continue_dialog))
                 o->oAction = 1;
             break;
 
@@ -239,7 +239,7 @@ void bhv_snowmans_head_loop(void) {
             break;
 
         case 4:
-            if (trigger_obj_dialog_when_facing(&gMarioStates[0], &o->oSnowmansHeadUnkF4, gBehaviorValues.dialogs.SnowmanHeadAfterDialog, 700.0f, 2, bhv_snowmans_head_action_4_continue_dialog)) {
+            if (trigger_obj_dialog_when_facing(local_dialog_mario(o, NULL), &o->oSnowmansHeadUnkF4, gBehaviorValues.dialogs.SnowmanHeadAfterDialog, 700.0f, 2, bhv_snowmans_head_action_4_continue_dialog)) {
                 spawn_mist_particles();
                 f32* starPos = gLevelValues.starPositions.SnowmanHeadStarPos;
                 spawn_default_star(starPos[0], starPos[1], starPos[2]);

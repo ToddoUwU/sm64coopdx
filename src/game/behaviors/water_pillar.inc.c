@@ -41,7 +41,7 @@ void water_level_pillar_undrained(void) {
                     (s32) approach_f32_symmetric(gEnvironmentLevels[2], -2450.0f, 5.0f);
                 gEnvironmentLevels[0] =
                     (s32) approach_f32_symmetric(gEnvironmentLevels[0], -2450.0f, 5.0f);
-                reset_rumble_timers_2(&gMarioStates[0], 2);
+                for (u8 i = 0; i < gLocalPlayerCount; i++) { reset_rumble_timers_2(&gMarioStates[i], 2); }
             } else
                 o->oAction++;
             break;

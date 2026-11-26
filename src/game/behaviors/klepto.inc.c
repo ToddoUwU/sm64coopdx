@@ -97,7 +97,7 @@ void bhv_klepto_init(void) {
         o->oKleptoStartPosY = o->oPosY;
         o->oKleptoStartPosZ = o->oPosZ;
 
-        if (gMarioStates[0].cap & SAVE_FLAG_CAP_ON_KLEPTO) {
+        if (local_mario_with_cap_flag(SAVE_FLAG_CAP_ON_KLEPTO) != NULL) {
             o->oAnimState = KLEPTO_ANIM_STATE_HOLDING_CAP;
         } else {
             o->oAction = KLEPTO_ACT_WAIT_FOR_MARIO;
@@ -418,7 +418,8 @@ void bhv_klepto_update(void) {
                 u8 modelIndex = (np->overrideModelIndex < CT_MAX) ? np->overrideModelIndex : 0;
                 u32 capModel = gCharacters[modelIndex].capModelId;
 
-                gMarioStates[0].cap &= ~SAVE_FLAG_CAP_ON_KLEPTO;
+                struct MarioState *capOwner = local_mario_with_cap_flag(SAVE_FLAG_CAP_ON_KLEPTO);
+                if (capOwner != NULL) { capOwner->cap &= ~SAVE_FLAG_CAP_ON_KLEPTO; }
 
                 struct Object* cap = spawn_object(o, capModel, bhvNormalCap);
                 if (cap != NULL) {

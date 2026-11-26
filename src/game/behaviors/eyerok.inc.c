@@ -128,7 +128,7 @@ static void eyerok_boss_act_wake_up(void) {
                 o->oSubAction += 1;
             }
 
-            if (o->oEyerokBossUnk110 == 0.0f && mario_ready_to_speak(&gMarioStates[0]) != 0) {
+            if (o->oEyerokBossUnk110 == 0.0f && mario_ready_to_speak(local_dialog_mario(o, NULL)) != 0) {
                 o->oAction = EYEROK_BOSS_ACT_SHOW_INTRO_TEXT;
             } else if (o->oTimer > 150) {
                 if (approach_f32_ptr(&o->oEyerokBossUnk110, 0.0f, 10.0f)) {
@@ -150,7 +150,7 @@ UNUSED static u8 eyerok_boss_act_show_intro_text_continue_dialog(void) {
 static void eyerok_boss_act_show_intro_text(void) {
     // todo: get dialog working properly again
     /*struct MarioState* marioState = nearest_mario_state_to_object(o);
-    if (should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 2, 0, CUTSCENE_DIALOG, gBehaviorValues.dialogs.EyerokIntroDialog, eyerok_boss_act_show_intro_text_continue_dialog)) {
+    if (should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, marioState), 2, 0, CUTSCENE_DIALOG, gBehaviorValues.dialogs.EyerokIntroDialog, eyerok_boss_act_show_intro_text_continue_dialog)) {
         o->oAction = EYEROK_BOSS_ACT_FIGHT;
         network_send_object_reliability(o, TRUE);
     }*/
@@ -215,7 +215,7 @@ static void eyerok_boss_act_die(void) {
     // todo: get dialog working again
     /*struct MarioState* marioState = nearest_mario_state_to_object(o);
     if (o->oTimer == 60) {
-        if (should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 2, 0, CUTSCENE_DIALOG, gBehaviorValues.dialogs.EyerokDefeatedDialog, eyerok_boss_act_die_continue_dialog)) {
+        if (should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, marioState), 2, 0, CUTSCENE_DIALOG, gBehaviorValues.dialogs.EyerokDefeatedDialog, eyerok_boss_act_die_continue_dialog)) {
             f32* starPos = gLevelValues.starPositions.EyerockStarPos;
             spawn_default_star(starPos[0], starPos[1], starPos[2]);
         } else {

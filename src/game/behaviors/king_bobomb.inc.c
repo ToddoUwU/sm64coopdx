@@ -58,11 +58,11 @@ void king_bobomb_act_0(void) {
         cur_obj_init_animation_with_sound(5);
         cur_obj_set_pos_to_home();
         o->oHealth = gBehaviorValues.KingBobombHealth;
-        if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_can_mario_activate_textbox_2(&gMarioStates[0], 500.0f, 100.0f)) {
+        if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_can_mario_activate_textbox_2(local_dialog_mario(o, marioState), 500.0f, 100.0f)) {
             o->oSubAction++;
             seq_player_lower_volume(SEQ_PLAYER_LEVEL, 60, 40);
         }
-    } else if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 2, 1, CUTSCENE_DIALOG, gBehaviorValues.dialogs.KingBobombIntroDialog, king_bobomb_act_0_continue_dialog)) {
+    } else if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, marioState), 2, 1, CUTSCENE_DIALOG, gBehaviorValues.dialogs.KingBobombIntroDialog, king_bobomb_act_0_continue_dialog)) {
         o->oAction = 2;
         o->oFlags |= OBJ_FLAG_HOLDABLE;
     }
@@ -220,8 +220,8 @@ void king_bobomb_act_7(void) {
     cur_obj_init_animation_with_sound(2);
 
     struct MarioState* marioState = nearest_mario_state_to_object(o);
-    u8 updateDialog = (marioState && should_start_or_continue_dialog(marioState, o)) || (gMarioStates[0].pos[1] >= o->oPosY - 100.0f);
-    if (updateDialog && cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 2, 2, CUTSCENE_DIALOG, gBehaviorValues.dialogs.KingBobombDefeatDialog, king_bobomb_act_7_continue_dialog)) {
+    u8 updateDialog = (marioState && should_start_or_continue_dialog(marioState, o)) || (nearest_local_mario_to_object(o)->pos[1] >= o->oPosY - 100.0f);
+    if (updateDialog && cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, NULL), 2, 2, CUTSCENE_DIALOG, gBehaviorValues.dialogs.KingBobombDefeatDialog, king_bobomb_act_7_continue_dialog)) {
         o->oAction = 8;
         network_send_object(o);
     }
@@ -253,7 +253,7 @@ void king_bobomb_act_8(void) {
 #endif
         // If we're not the closet to King-Bombomb,
         // Don't play this cutscene!
-        if (star != NULL && nearest_mario_state_to_object(o) != &gMarioStates[0]) {
+        if (star != NULL && !mario_is_local(nearest_mario_state_to_object(o))) {
             star->oStarSpawnExtCutsceneFlags = 0;
         }
     }
@@ -330,11 +330,11 @@ void king_bobomb_act_5(void) { // bobomb returns home
                 o->oAction = 0;
                 stop_background_music(SEQUENCE_ARGS(4, SEQ_EVENT_BOSS));
             }
-            if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_can_mario_activate_textbox_2(&gMarioStates[0], 500.0f, 100.0f))
+            if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_can_mario_activate_textbox_2(local_dialog_mario(o, marioState), 500.0f, 100.0f))
                 o->oSubAction++;
             break;
         case 4:
-            if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 2, 1, CUTSCENE_DIALOG, gBehaviorValues.dialogs.KingBobombCheatDialog, king_bobomb_act_5_continue_dialog))
+            if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, marioState), 2, 1, CUTSCENE_DIALOG, gBehaviorValues.dialogs.KingBobombCheatDialog, king_bobomb_act_5_continue_dialog))
                 o->oAction = 2;
             break;
     }
@@ -371,7 +371,7 @@ void king_bobomb_move(void) {
         cur_obj_enable_rendering();
         return;
     }
-    s32 distanceToPlayer = dist_between_objects(o, gMarioStates[0].marioObj);
+    s32 distanceToPlayer = dist_between_objects(o, nearest_local_mario_to_object(o)->marioObj);
     if (distanceToPlayer < 5000.0f * draw_distance_scalar())
         cur_obj_enable_rendering();
     else
@@ -379,14 +379,14 @@ void king_bobomb_move(void) {
 }
 
 void bhv_king_bobomb_override_ownership(u8* shouldOverride, u8* shouldOwn) {
-    *shouldOverride = (gMarioStates[0].heldByObj == o);
+    *shouldOverride = (local_mario_held_by(o) != NULL);
     if (*shouldOverride) {
         *shouldOwn = true;
     }
 }
 
 u8 bhv_king_bobomb_ignore_if_true(void) {
-    return (o->oAction == 8) || (gMarioStates[0].heldByObj == o);
+    return (o->oAction == 8) || (local_mario_held_by(o) != NULL);
 }
 
 void bhv_king_bobomb_loop(void) {

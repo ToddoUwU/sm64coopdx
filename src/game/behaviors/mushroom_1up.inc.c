@@ -298,7 +298,7 @@ void bhv_1up_hidden_trigger_loop(void) {
     }
 
     struct Object* player = nearest_player_to_object(o);
-    if (player && player == gMarioStates[0].marioObj && obj_check_if_collided_with_object(o, player) == 1) {
+    if (player && is_local_mario_object(player) && obj_check_if_collided_with_object(o, player) == 1) {
         struct Object *hiddenObj = cur_obj_nearest_object_with_behavior(bhvHidden1up);
         if (hiddenObj != NULL) {
             hiddenObj->o1UpHiddenUnkF4++;
@@ -369,7 +369,7 @@ void bhv_1up_hidden_in_pole_trigger_loop(void) {
     }
 
     struct Object* player = nearest_player_to_object(o);
-    if (player && player == gMarioStates[0].marioObj && obj_check_if_collided_with_object(o, player) == 1) {
+    if (player && is_local_mario_object(player) && obj_check_if_collided_with_object(o, player) == 1) {
         struct Object *hiddenObj = cur_obj_nearest_object_with_behavior(bhvHidden1upInPole);
         if (hiddenObj != NULL) {
             hiddenObj->o1UpHiddenUnkF4++;
@@ -392,7 +392,7 @@ void bhv_1up_hidden_in_pole_spawner_loop(void) {
 
     struct Object* player = nearest_player_to_object(o);
     s32 distanceToPlayer = player ? dist_between_objects(o, player) : 10000;
-    if (player && player == gMarioStates[0].marioObj && distanceToPlayer < 700) {
+    if (player && is_local_mario_object(player) && distanceToPlayer < 700) {
         struct Object* spawn_objects[3];
         u32 models[3];
 

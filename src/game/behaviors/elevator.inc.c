@@ -157,7 +157,7 @@ void bhv_elevator_loop(void) {
     CUR_OBJ_CALL_ACTION_FUNCTION(sElevatorActions);
 
     // allow bubbled players to pass through
-    if (gMarioStates[0].action == ACT_BUBBLED) {
+    if (local_mario_in_action(ACT_BUBBLED) != NULL) {
         cur_obj_become_intangible();
     } else {
         cur_obj_become_tangible();

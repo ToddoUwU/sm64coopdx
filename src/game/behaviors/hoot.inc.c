@@ -3,7 +3,8 @@
 static u8 localTalkToHoot = 0;
 
 static u8 bhv_hoot_ignore_if_true(void) {
-    return (gMarioStates[0].action == ACT_RIDING_HOOT) && (gMarioStates[0].usedObj == o);
+    struct MarioState *rider = local_mario_using_object(o);
+    return (rider != NULL) && (rider->action == ACT_RIDING_HOOT);
 }
 
 void bhv_hoot_init(void) {
@@ -290,9 +291,9 @@ void bhv_hoot_loop(void) {
                 localTalkToHoot = 1;
             }
 
-            if (localTalkToHoot == 1 && set_mario_npc_dialog(&gMarioStates[0], 2, hoot_wants_to_talk_continue_dialog) == 2 && cutscene_object_with_dialog(CUTSCENE_DIALOG, o, gBehaviorValues.dialogs.HootIntroDialog)) {
+            if (localTalkToHoot == 1 && set_mario_npc_dialog(local_dialog_mario(o, NULL), 2, hoot_wants_to_talk_continue_dialog) == 2 && cutscene_object_with_dialog(CUTSCENE_DIALOG, o, gBehaviorValues.dialogs.HootIntroDialog)) {
                 localTalkToHoot = 2;
-                set_mario_npc_dialog(&gMarioStates[0], 0, NULL);
+                set_mario_npc_dialog(local_dialog_mario(o, NULL), 0, NULL);
                 cur_obj_become_tangible();
                 o->oHootAvailability = HOOT_AVAIL_READY_TO_FLY;
                 network_send_object(o);
@@ -301,7 +302,7 @@ void bhv_hoot_loop(void) {
 
         case HOOT_AVAIL_READY_TO_FLY:
             if (forceFlySanity) {
-                set_mario_npc_dialog(&gMarioStates[0], 0, NULL);
+                set_mario_npc_dialog(local_dialog_mario(o, NULL), 0, NULL);
                 cur_obj_become_tangible();
                 forceFlySanity = FALSE;
             }

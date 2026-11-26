@@ -24,12 +24,12 @@ void opened_cannon_act_0(void) {
     if (distanceToPlayer < 500.0f) {
         //cur_obj_become_tangible();
         //cur_obj_enable_rendering();
-        if (player == gMarioStates[0].marioObj) {
+        if (is_local_mario_object(player)) {
             if (o->oInteractStatus & INT_STATUS_INTERACTED && (!(o->oInteractStatus & INT_STATUS_TOUCHED_BOB_OMB))) { // bob-omb explodes when it gets into a cannon
                 o->oAction = 4;
                 o->oCannonUnk10C = 1;
                 o->oCannonUnkF8 = 1;
-                o->oCannonPlayerIndex = 0;
+                o->oCannonPlayerIndex = player->oBehParams - 1;
                 network_send_object(o);
             } else {
                 o->oInteractStatus = 0;
@@ -173,8 +173,9 @@ static void cannon_on_received_post(u8 fromLocalIndex) {
 static void bhv_cannon_base_sanity_check(void) {
     // figure out if it's still in use
     u8 inUse = FALSE;
-    if (o->oCannonPlayerIndex == 0) {
-        inUse = (gMarioStates[0].action == ACT_IN_CANNON && gMarioStates[0].interactObj == o);
+    if (is_local_player(o->oCannonPlayerIndex)) {
+        struct MarioState *cannonUser = &gMarioStates[o->oCannonPlayerIndex];
+        inUse = (cannonUser->action == ACT_IN_CANNON && cannonUser->interactObj == o);
     } else {
         for (s32 i = 0; i < MAX_PLAYERS; i++) {
             if (!is_player_active(&gMarioStates[i])) { continue; }

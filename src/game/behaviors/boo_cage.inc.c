@@ -118,7 +118,7 @@ void bhv_boo_cage_loop(void) {
             cur_obj_scale(1.0f);
 
             // Set the action to BOO_CAGE_ACT_MARIO_JUMPING_IN when Mario jumps in.
-            if (obj_check_if_collided_with_object(o, gMarioStates[0].marioObj)) {
+            if (cur_obj_collided_with_local_mario()) {
                 o->oAction++;
             }
 

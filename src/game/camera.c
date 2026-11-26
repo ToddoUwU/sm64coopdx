@@ -12636,3 +12636,12 @@ void set_fov_shake_from_point_preset(u8 preset, f32 posX, f32 posY, f32 posZ) {
         local_player_scope_end(previous);
     }
 }
+
+bool any_local_camera_in_cutscene(void) {
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        struct CameraView *view = &gCameraViews[i];
+        if (view->recentCutscene != 0) { return true; }
+        if (view->camera != NULL && view->camera->cutscene != 0) { return true; }
+    }
+    return false;
+}

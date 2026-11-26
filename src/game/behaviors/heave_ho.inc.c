@@ -5,7 +5,8 @@ s16 D_8032F460[][2] = { { 30, 0 }, { 42, 1 }, { 52, 0 },  { 64, 1 },  { 74, 0 },
 
 void bhv_heave_ho_throw_mario_loop(void) {
     struct MarioState* marioState = nearest_mario_state_to_object(o);
-    if (gMarioStates[0].heldByObj == o->parentObj) { marioState = &gMarioStates[0]; }
+    struct MarioState *heldLocal = local_mario_held_by(o->parentObj);
+    if (heldLocal != NULL) { marioState = heldLocal; }
 
     struct Object* player = marioState ? marioState->marioObj : NULL;
     o->oParentRelativePosX = 200.0f;
@@ -120,14 +121,14 @@ void heave_ho_move(void) {
 }
 
 void bhv_heave_ho_override_ownership(u8* shouldOverride, u8* shouldOwn) {
-    *shouldOverride = (gMarioStates[0].heldByObj == o);
+    *shouldOverride = (local_mario_held_by(o) != NULL);
     if (*shouldOverride) {
         *shouldOwn = true;
     }
 }
 
 u8 bhv_heave_ho_ignore_if_true(void) {
-    return (gMarioStates[0].heldByObj == o);
+    return (local_mario_held_by(o) != NULL);
 }
 
 void bhv_heave_ho_loop(void) {

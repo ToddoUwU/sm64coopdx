@@ -172,7 +172,8 @@ void bhv_coffin_loop(void) {
         }
 
         // allow bubbled players to pass through if crushed by it
-        if (gMarioStates[0].action == ACT_BUBBLED && gMarioStates[0].pos[1] <= o->oPosY) {
+        struct MarioState *bubbled = local_mario_in_action(ACT_BUBBLED);
+        if (bubbled != NULL && bubbled->pos[1] <= o->oPosY) {
             cur_obj_become_intangible();
         } else {
             cur_obj_become_tangible();

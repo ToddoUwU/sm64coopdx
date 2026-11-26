@@ -91,7 +91,10 @@ void bhv_star_spawn_init(void) {
     o->oForwardVel = o->oStarSpawnDisFromHome / 30.0f;
     o->oStarSpawnUnkFC = o->oPosY;
 
-    if (o->oStarSpawnExtCutsceneFlags && ((gMarioStates[0].action & ACT_GROUP_MASK) != ACT_GROUP_CUTSCENE)) {
+    // the nearest player on this PC watches the star appear
+    struct MarioState *watcher = nearest_local_mario_to_object(o);
+    if (o->oStarSpawnExtCutsceneFlags && ((watcher->action & ACT_GROUP_MASK) != ACT_GROUP_CUTSCENE)) {
+        LOCAL_PLAYER_SCOPE_MARIO(watcher);
         if (o->oBehParams2ndByte == 0 || gCurrCourseNum == COURSE_BBH)
             cutscene_object(CUTSCENE_STAR_SPAWN, o);
         else
@@ -157,7 +160,7 @@ void bhv_star_spawn_loop(void) {
             o->oFaceAngleYaw += 0x800;
             cur_obj_become_tangible();
             if (o->oTimer == 20) {
-                gMarioStates[0].freeze = 0;
+                for (u8 i = 0; i < gLocalPlayerCount; i++) { gMarioStates[i].freeze = 0; }
                 gObjCutsceneDone = TRUE;
                 clear_time_stop_flags(TIME_STOP_ENABLED | TIME_STOP_MARIO_AND_DOORS);
                 o->activeFlags &= ~ACTIVE_FLAG_INITIATED_TIME_STOP;

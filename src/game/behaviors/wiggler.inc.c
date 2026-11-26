@@ -231,7 +231,7 @@ static void wiggler_act_walk(void) {
 
         // If Mario is positioned below the wiggler, assume he entered through the
         // lower cave entrance, so don't display text.
-        if ((player && player->oPosY < o->oPosY) || (cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 2, 0, CUTSCENE_DIALOG, gBehaviorValues.dialogs.WigglerDialog, wiggler_act_walk_continue_dialog) != 0)) {
+        if ((player && player->oPosY < o->oPosY) || (cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, NULL), 2, 0, CUTSCENE_DIALOG, gBehaviorValues.dialogs.WigglerDialog, wiggler_act_walk_continue_dialog) != 0)) {
             o->oWigglerTextStatus = WIGGLER_TEXT_STATUS_COMPLETED_DIALOG;
             network_send_object_reliability(o, TRUE);
         }
@@ -381,7 +381,7 @@ static void wiggler_act_shrink(void) {
 
             // If we're not the closet to Wiggler,
             // Don't play this cutscene!
-            if (star != NULL && nearest_mario_state_to_object(o) != &gMarioStates[0]) {
+            if (star != NULL && !mario_is_local(nearest_mario_state_to_object(o))) {
                 star->oStarSpawnExtCutsceneFlags = 0;
             }
 

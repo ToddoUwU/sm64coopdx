@@ -46,7 +46,7 @@ void cap_switch_act_2(void) {
     } else {
         struct MarioState* marioState = nearest_mario_state_to_object(o);
         if (marioState && should_start_or_continue_dialog(marioState, o)) {
-            sp1C = cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 1, 0x0C, CUTSCENE_CAP_SWITCH_PRESS, 0, cap_switch_act_2_continue_dialog);
+            sp1C = cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, NULL), 1, 0x0C, CUTSCENE_CAP_SWITCH_PRESS, 0, cap_switch_act_2_continue_dialog);
             if (sp1C) { o->oAction = 3; }
         }
     }

@@ -595,7 +595,7 @@ s32 obj_begin_race(s32 noTimer) {
         }
 
         // Unfreeze mario and disable time stop to begin the race
-        set_mario_npc_dialog(&gMarioStates[0], 0, NULL);
+        set_mario_npc_dialog(local_dialog_mario(o, NULL), 0, NULL);
         disable_time_stop_including_mario();
     } else if (o->oTimer > 50) {
         return TRUE;
@@ -614,7 +614,7 @@ static void koopa_the_quick_act_wait_before_race(void) {
 
     if (o->oKoopaTheQuickInitTextboxCooldown != 0) {
         o->oKoopaTheQuickInitTextboxCooldown -= 1;
-    } else if (mario_is_local(marioState) && cur_obj_can_mario_activate_textbox_2(&gMarioStates[0], 400.0f, 400.0f)) {
+    } else if (mario_is_local(marioState) && cur_obj_can_mario_activate_textbox_2(local_dialog_mario(o, marioState), 400.0f, 400.0f)) {
         //! The next action doesn't execute until next frame, giving mario one
         //  frame where he can jump, and thus no longer be ready to speak.
         //  (On J, he has two frames and doing this enables time stop - see
@@ -635,7 +635,7 @@ static void koopa_the_quick_act_show_init_text(void) {
     struct MarioState* marioState = nearest_mario_state_to_object(o);
     s32 response = 0;
     if (marioState && should_start_or_continue_dialog(marioState, o) && BHV_ARR_CHECK(sKoopaTheQuickProperties, o->oKoopaTheQuickRaceIndex, struct KoopaTheQuickProperties)) {
-        response = obj_update_race_proposition_dialog(&gMarioStates[0], *sKoopaTheQuickProperties[o->oKoopaTheQuickRaceIndex].initText, koopa_the_quick_act_show_init_text_continue_dialog);
+        response = obj_update_race_proposition_dialog(local_dialog_mario(o, NULL), *sKoopaTheQuickProperties[o->oKoopaTheQuickRaceIndex].initText, koopa_the_quick_act_show_init_text_continue_dialog);
     }
 
     if (response == 1) {
@@ -847,7 +847,7 @@ static void koopa_the_quick_act_after_race(void) {
     if (!o->parentObj) { return; }
 
     if (o->parentObj->oKoopaRaceEndpointUnk100 == 0) {
-        if (mario_is_local(marioState) && cur_obj_can_mario_activate_textbox_2(&gMarioStates[0], 400.0f, 400.0f)) {
+        if (mario_is_local(marioState) && cur_obj_can_mario_activate_textbox_2(local_dialog_mario(o, marioState), 400.0f, 400.0f)) {
             stop_background_music(SEQUENCE_ARGS(4, SEQ_LEVEL_SLIDE));
 
             // Determine which text to display
@@ -870,7 +870,7 @@ static void koopa_the_quick_act_after_race(void) {
         }
     } else if (o->parentObj->oKoopaRaceEndpointUnk100 > 0) {
         if (marioState && should_start_or_continue_dialog(marioState, o)) {
-            s32 dialogResponse = cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 2, 1, CUTSCENE_DIALOG, o->parentObj->oKoopaRaceEndpointUnk100, koopa_the_quick_act_after_race_continue_dialog);
+            s32 dialogResponse = cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, NULL), 2, 1, CUTSCENE_DIALOG, o->parentObj->oKoopaRaceEndpointUnk100, koopa_the_quick_act_after_race_continue_dialog);
             if (dialogResponse != 0) {
                 o->parentObj->oKoopaRaceEndpointUnk100 = DIALOG_NONE;
                 o->oTimer = 0;

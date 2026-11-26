@@ -47,7 +47,7 @@ void bhv_whirlpool_loop(void) {
     if (draw_distance_scalar_is_infinite()) {
         o->header.gfx.node.flags &= ~GRAPH_RENDER_INVISIBLE;
     } else {
-        f32 marioDist = dist_between_objects(o, gMarioStates[0].marioObj);
+        f32 marioDist = dist_between_objects(o, nearest_local_mario_to_object(o)->marioObj);
         if (marioDist < 5000.0f * draw_distance_scalar()) {
             o->header.gfx.node.flags &= ~GRAPH_RENDER_INVISIBLE;
         } else {
@@ -76,7 +76,7 @@ void bhv_whirlpool_loop(void) {
 }
 
 void bhv_jet_stream_loop(void) {
-    f32 marioDist = dist_between_objects(o, gMarioStates[0].marioObj);
+    f32 marioDist = dist_between_objects(o, nearest_local_mario_to_object(o)->marioObj);
     if (marioDist < 5000.0f) {
         gEnvFxBubbleConfig[ENVFX_STATE_PARTICLECOUNT] = 60;
         gEnvFxBubbleConfig[ENVFX_STATE_SRC_X] = o->oPosX;

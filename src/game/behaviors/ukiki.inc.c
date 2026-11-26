@@ -403,7 +403,7 @@ void ukiki_act_go_to_cage(void) {
             cur_obj_init_animation_with_sound(UKIKI_ANIM_JUMP_CLAP);
             cur_obj_rotate_yaw_toward(angleToPlayer, 0x400);
 
-            if (cur_obj_can_mario_activate_textbox(&gMarioStates[0], 200.0f, 30.0f, 0x7FFF)) {
+            if (cur_obj_can_mario_activate_textbox(local_dialog_mario(o, NULL), 200.0f, 30.0f, 0x7FFF)) {
                 o->oSubAction++; // fallthrough
             } else {
             break;
@@ -412,7 +412,7 @@ void ukiki_act_go_to_cage(void) {
         case UKIKI_SUB_ACT_CAGE_TALK_TO_MARIO:
             cur_obj_init_animation_with_sound(UKIKI_ANIM_HANDSTAND);
 
-            if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(&gMarioStates[0], 3, 1, CUTSCENE_DIALOG, gBehaviorValues.dialogs.UkikiCageDialog, ukiki_act_go_to_cage_continue_dialog)) {
+            if (marioState && should_start_or_continue_dialog(marioState, o) && cur_obj_update_dialog_with_cutscene(local_dialog_mario(o, marioState), 3, 1, CUTSCENE_DIALOG, gBehaviorValues.dialogs.UkikiCageDialog, ukiki_act_go_to_cage_continue_dialog)) {
                 o->oSubAction++;
                 network_send_object_reliability(o, TRUE);
             }
@@ -652,7 +652,7 @@ void cap_ukiki_held_loop(void) {
  */
 void bhv_ukiki_init(void) {
     if (o->oBehParams2ndByte == UKIKI_CAP) {
-        if (gMarioStates[0].cap & SAVE_FLAG_CAP_ON_UKIKI) {
+        if (local_mario_with_cap_flag(SAVE_FLAG_CAP_ON_UKIKI) != NULL) {
             o->oUkikiTextState = UKIKI_TEXT_HAS_CAP;
             o->oUkikiHasCap |= UKIKI_CAP_ON;
         }

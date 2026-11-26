@@ -41,11 +41,37 @@ void local_player_scope_end(u8 previousLocalIndex);
 // Same as local_player_scope_begin() for the player owning `m`; non-local Marios keep the current scope.
 u8 local_player_scope_begin_mario(const struct MarioState *m);
 
+// Scope that lasts until the end of the enclosing block: per-player systems work for the player owning `m`
+// (unchanged when `m` is not local). Restored automatically, including on early returns.
+static inline void local_player_scope_restore(u8 *previousLocalIndex) {
+    local_player_scope_end(*previousLocalIndex);
+}
+#define LOCAL_PLAYER_SCOPE_MARIO(m) \
+    u8 localPlayerScopePrevious __attribute__((cleanup(local_player_scope_restore))) = local_player_scope_begin_mario(m)
+#define LOCAL_PLAYER_SCOPE(localIndex) \
+    u8 localPlayerScopePrevious __attribute__((cleanup(local_player_scope_restore))) = local_player_scope_begin(localIndex)
+
 // Nearest active local Mario to an object or point (never NULL while a session runs).
 struct MarioState *nearest_local_mario_to_object(struct Object *obj);
 struct MarioState *nearest_local_mario_to_point(f32 x, f32 y, f32 z);
 // Checks if any active local Mario is within `distance` of `obj`.
 bool any_local_mario_within(struct Object *obj, f32 distance);
+
+// Checks if `obj` is the Mario object of a player on this PC.
+bool is_local_mario_object(struct Object *obj);
+// First local Mario standing on `platform`, held by `obj`, or using `obj` (NULL when none).
+struct MarioState *local_mario_on_platform(struct Object *platform);
+struct MarioState *local_mario_held_by(struct Object *obj);
+struct MarioState *local_mario_using_object(struct Object *obj);
+// First local Mario in `action`, or whose cap flags include `capFlag` (NULL when none).
+struct MarioState *local_mario_in_action(u32 action);
+struct MarioState *local_mario_with_cap_flag(u32 capFlag);
+// Checks the current object (gCurrentObject) against every visible local Mario.
+bool cur_obj_collided_with_local_mario(void);
+bool local_mario_ground_pounding_platform(struct Object *platform);
+// Local Mario of the player that owns object `obj`'s interaction: `candidate` when it plays on this PC,
+// otherwise the nearest local Mario.
+struct MarioState *local_mario_or_nearest(struct MarioState *candidate, struct Object *obj);
 
 // Session lifetime (hosting on this PC). Starting adds local players 2..N as network players.
 u8 local_players_requested_count(void);

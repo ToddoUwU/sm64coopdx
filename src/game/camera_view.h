@@ -125,6 +125,8 @@ struct Camera *area_scoped_camera(struct Area *area);
 struct Camera *mario_area_camera(struct MarioState *m);
 // update_camera() / reset_camera() for every local player's camera in the current area.
 void update_local_cameras(void);
+// Checks if any local player's camera is running (or just finished) a cutscene.
+bool any_local_camera_in_cutscene(void);
 void reset_local_cameras(void);
 
 // Variables used outside camera.c. Names that only camera.c uses are mapped at the top of camera.c.

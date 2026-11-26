@@ -93,14 +93,13 @@ void bhv_tilting_inverted_pyramid_loop(void) {
         y += gMarioStates[i].marioObj->oPosY;
         z += gMarioStates[i].marioObj->oPosZ;
         playersTouched++;
-        if (i == 0) { marioOnPlatform = TRUE; }
+        if (is_local_player(i)) { marioOnPlatform = TRUE; }
     }
 
     if (playersTouched > 0) {
         x /= (f32)playersTouched;
         y /= (f32)playersTouched;
         z /= (f32)playersTouched;
-        get_mario_pos(&gMarioStates[0], &mx, &my, &mz);
 
         dist[0] = x - o->oPosX;
         dist[1] = y - o->oPosY;
@@ -144,12 +143,18 @@ void bhv_tilting_inverted_pyramid_loop(void) {
     create_transform_from_normals(*transform, o->oTiltingPyramidNormalX, o->oTiltingPyramidNormalY, o->oTiltingPyramidNormalZ);
 
     // If Mario is on the platform, adjust his position for the platform tilt.
+    // Every player on this PC standing on it moves with the tilt.
     if (marioOnPlatform != FALSE) {
         linear_mtxf_mul_vec3f(*transform, posAfterRotation, dist);
-        mx += posAfterRotation[0] - posBeforeRotation[0];
-        my += posAfterRotation[1] - posBeforeRotation[1];
-        mz += posAfterRotation[2] - posBeforeRotation[2];
-        set_mario_pos(&gMarioStates[0], mx, my, mz);
+        for (u8 i = 0; i < gLocalPlayerCount; i++) {
+            struct MarioState *m = &gMarioStates[i];
+            if (!is_player_active(m) || m->marioObj == NULL || m->marioObj->platform != o) { continue; }
+            get_mario_pos(m, &mx, &my, &mz);
+            mx += posAfterRotation[0] - posBeforeRotation[0];
+            my += posAfterRotation[1] - posBeforeRotation[1];
+            mz += posAfterRotation[2] - posBeforeRotation[2];
+            set_mario_pos(m, mx, my, mz);
+        }
     }
 
     o->header.gfx.throwMatrix = transform;

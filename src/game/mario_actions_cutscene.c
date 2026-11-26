@@ -402,6 +402,23 @@ u8 should_start_or_continue_dialog(struct MarioState* m, struct Object* object) 
     return (gContinueDialogFunctionObject == object);
 }
 
+// Local player whose NPC dialog is in progress (gContinueDialogFunctionObject is that NPC).
+static u8 sNpcDialogOwner = 0;
+
+struct MarioState *local_dialog_mario(struct Object *object, struct MarioState *preferred) {
+    // whoever already talks to this NPC keeps talking
+    if (object != NULL && gContinueDialogFunctionObject == object && is_local_player(sNpcDialogOwner)) {
+        return &gMarioStates[sNpcDialogOwner];
+    }
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        struct MarioState *m = &gMarioStates[i];
+        if (m->usedObj == object && (m->action == ACT_READING_NPC_DIALOG || m->action == ACT_WAITING_FOR_DIALOG)) {
+            return m;
+        }
+    }
+    return local_mario_or_nearest(preferred, object);
+}
+
 // (can) place Mario in dialog?
 // initiate dialog?
 // return values:
@@ -413,6 +430,13 @@ s32 set_mario_npc_dialog(struct MarioState* m, s32 actionArg, u8 (*inContinueDia
 
     s32 dialogState = 0;
 
+    // one NPC conversation at a time on this PC: another local player waits until it ends
+    bool otherLocalPlayerTalking = is_local_player(m->playerIndex) && gContinueDialogFunctionObject != NULL
+                                   && sNpcDialogOwner != m->playerIndex && is_local_player(sNpcDialogOwner);
+    if (otherLocalPlayerTalking) {
+        return 0;
+    }
+
     if (is_local_player(m->playerIndex)) {
         if (actionArg == 0 || inContinueDialogFunction == NULL) {
             localDialogNPCBehavior = NULL;
@@ -421,6 +445,7 @@ s32 set_mario_npc_dialog(struct MarioState* m, s32 actionArg, u8 (*inContinueDia
         } else {
             gContinueDialogFunction = inContinueDialogFunction;
             gContinueDialogFunctionObject = gCurrentObject;
+            sNpcDialogOwner = (u8) m->playerIndex;
         }
     }
 

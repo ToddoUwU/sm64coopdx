@@ -91,7 +91,7 @@ void bhv_grand_star_loop(void) {
             o->oPosY = o->oHomeY + 200.0f;
             grand_star_zero_velocity();
             gObjCutsceneDone = 1;
-            set_mario_npc_dialog(&gMarioStates[0], 0, NULL);
+            set_mario_npc_dialog(local_dialog_mario(o, NULL), 0, NULL);
             o->oAction++;
             o->oInteractStatus = 0;
             cur_obj_play_sound_2(SOUND_GENERAL_GRAND_STAR_JUMP);
@@ -103,8 +103,11 @@ void bhv_grand_star_loop(void) {
         // Check for if the jumbo star has been collected.
         if (o->oInteractStatus & INT_STATUS_INTERACTED) {
             // Make sure we're in the jumbo star cutscene.
-            if (gMarioStates[0].action != ACT_JUMBO_STAR_CUTSCENE) {
-                set_mario_action(&gMarioStates[0], ACT_JUMBO_STAR_CUTSCENE, 0);
+            // the ending starts for everyone on this PC
+            for (u8 i = 0; i < gLocalPlayerCount; i++) {
+                if (gMarioStates[i].action != ACT_JUMBO_STAR_CUTSCENE) {
+                    set_mario_action(&gMarioStates[i], ACT_JUMBO_STAR_CUTSCENE, 0);
+                }
             }
             // Increment our action, The star despawns next action.
             o->oAction++;

@@ -60,7 +60,7 @@ void bhv_mr_blizzard_init(void) {
     } else {
         if (o->oBehParams2ndByte != MR_BLIZZARD_STYPE_NO_CAP) {
             // Cap wearing Mr. Blizzard from SL.
-            if (gMarioStates[0].cap & SAVE_FLAG_CAP_ON_MR_BLIZZARD) {
+            if (local_mario_with_cap_flag(SAVE_FLAG_CAP_ON_MR_BLIZZARD) != NULL) {
                 o->oAnimState = 1;
             }
         }
@@ -244,9 +244,11 @@ static void mr_blizzard_act_death(void) {
             // If Mr. Blizzard is wearing Mario's cap, clear
             // the save flag and spawn Mario's cap.
             if (o->oAnimState) {
-                gMarioStates[0].cap &= ~SAVE_FLAG_CAP_ON_MR_BLIZZARD;
+                struct MarioState *capOwner = local_mario_with_cap_flag(SAVE_FLAG_CAP_ON_MR_BLIZZARD);
+                if (capOwner == NULL) { capOwner = &gMarioStates[0]; }
+                capOwner->cap &= ~SAVE_FLAG_CAP_ON_MR_BLIZZARD;
 
-                cap = spawn_object_relative(0, 5, 105, 0, o, gMarioStates[0].character->capModelId, bhvNormalCap);
+                cap = spawn_object_relative(0, 5, 105, 0, o, capOwner->character->capModelId, bhvNormalCap);
                 if (cap != NULL) {
                     cap->globalPlayerIndex = o->globalPlayerIndex;
                     cap->oMoveAngleYaw = o->oFaceAngleYaw + (o->oFaceAngleRoll < 0 ? 0x4000 : -0x4000);
