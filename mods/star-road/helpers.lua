@@ -62,7 +62,14 @@ function check_mario_attacking(obj, mario)
 end
 
 function check_local_mario_attacking(obj)
-    return check_mario_attacking(obj, gMarioStates[0])
+    -- any player on this PC (split screen) can break it
+    for i = 0, get_local_player_count() - 1 do
+        local attack = check_mario_attacking(obj, gMarioStates[i])
+        if attack ~= 0 then
+            return attack
+        end
+    end
+    return 0
 end
 
 --------------

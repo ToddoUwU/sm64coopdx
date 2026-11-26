@@ -6,7 +6,10 @@ local function on_level_init()
     local np = gNetworkPlayers[0]
 
     save_file_set_using_backup_slot(np.currAreaIndex ~= 1)
-    gMarioStates[0].numStars = save_file_get_total_star_count(get_current_save_file_num()-1,COURSE_MIN-1,COURSE_MAX-1)
+    local numStars = save_file_get_total_star_count(get_current_save_file_num()-1,COURSE_MIN-1,COURSE_MAX-1)
+    for i = 0, get_local_player_count() - 1 do
+        gMarioStates[i].numStars = numStars
+    end
     gLevelValues.exitCastleArea = gNetworkPlayers[0].currAreaIndex
 
     star_areas_replace()

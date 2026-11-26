@@ -21,7 +21,7 @@ local sCheats = {}
 --- Checks if `m` is active
 local function active_player(m)
     local np = gNetworkPlayers[m.playerIndex]
-    if m.playerIndex == 0 then
+    if mario_is_local(m) then
         return true
     end
     if not np.connected then

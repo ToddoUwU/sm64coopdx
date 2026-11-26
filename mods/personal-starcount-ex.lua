@@ -40,7 +40,7 @@ local is_in_cutscenes = {
 local function star_counter_on_interact(m, obj, intType, interacted)
     if not psc_toggle then return end
 
-    if m.playerIndex == 0 and intType == INTERACT_STAR_OR_KEY then
+    if mario_is_local(m) and intType == INTERACT_STAR_OR_KEY then
         -- Interactions happen before hud rendering, which is why this check can work
         -- despite prevNumStars being updated every frame
         if m.numStars ~= prevNumStars then

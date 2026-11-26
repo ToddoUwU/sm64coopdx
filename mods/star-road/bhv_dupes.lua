@@ -11,7 +11,14 @@ end
 
 --- @param o Object
 function bhv_custom_hidden_star_trigger_loop(o)
-    if (o.oInteractStatus & INT_STATUS_INTERACTED) ~= 0 or obj_check_if_collided_with_object(o, gMarioStates[0].marioObj) ~= 0 then
+    -- any player on this PC (split screen) can touch the secret
+    local touchedByLocalPlayer = false
+    for i = 0, get_local_player_count() - 1 do
+        if obj_check_if_collided_with_object(o, gMarioStates[i].marioObj) ~= 0 then
+            touchedByLocalPlayer = true
+        end
+    end
+    if (o.oInteractStatus & INT_STATUS_INTERACTED) ~= 0 or touchedByLocalPlayer then
         local hiddenStar = obj_get_nearest_object_with_behavior_id(o, bhvSMSRHiddenStar)
         if hiddenStar ~= nil then
             local count = obj_count_objects_with_behavior_id(bhvSMSRHiddenStarTrigger) - 1
@@ -75,7 +82,7 @@ function bhv_custom_hidden_star_loop(o)
             if o.oTimer > 2 then
                 star = spawn_red_coin_cutscene_star(o.oPosX, o.oPosY, o.oPosZ)
                 if not (star == nil) then
-                    if oHiddenStarLastInteractedPlayer == gMarioStates[0] then
+                    if oHiddenStarLastInteractedPlayer ~= nil and mario_is_local(oHiddenStarLastInteractedPlayer) then
                         star.oStarSpawnExtCutsceneFlags = 1
                     else
                         star.oStarSpawnExtCutsceneFlags = 0

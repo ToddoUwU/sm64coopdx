@@ -6,21 +6,23 @@ LEVEL_ZERO_LIFE = level_register("level_zerolife_entry", COURSE_NONE, "ZERO LIFE
 
 gGlobalSyncTable.hardMode = false
 
-local startingLives = false
+-- per player on this PC (split screen): whether their starting lives were set
+local startingLives = {}
 local zeroLife = false
 
 local function mario_update(m)
-    if m.playerIndex ~= 0 then return end
+    -- every player on this PC (split screen)
+    if not mario_is_local(m) then return end
 
-    if not startingLives then
+    if not startingLives[m.playerIndex] then
         m.numLives = 3
-        startingLives = true
+        startingLives[m.playerIndex] = true
     end
 
     if zeroLife then
         warp_to_level(LEVEL_ZERO_LIFE, 1, 0)
         zeroLife = false
-        startingLives = true
+        startingLives[m.playerIndex] = true
     end
 
     mario_update_hardmode(m)
@@ -46,9 +48,10 @@ local function on_level_init()
     on_level_init_hardmode()
 end
 
-local function on_death()
+--- @param m MarioState
+local function on_death(m)
     --- @type MarioState
-    local m = gMarioStates[0]
+    m = m or gMarioStates[0]
     if m.numLives < 0 then
         zeroLife = true
         m.numLives = 3
@@ -56,10 +59,13 @@ local function on_death()
 end
 
 local function on_screen_transition(transitionType)
-    local m = gMarioStates[0]
-    if m.numLives < 0 and transitionType == WARP_TRANSITION_FADE_INTO_BOWSER then
-        zeroLife = true
-        m.numLives = 3
+    -- every player on this PC (split screen) goes through the transition
+    for i = 0, get_local_player_count() - 1 do
+        local m = gMarioStates[i]
+        if m.numLives < 0 and transitionType == WARP_TRANSITION_FADE_INTO_BOWSER then
+            zeroLife = true
+            m.numLives = 3
+        end
     end
 end
 
