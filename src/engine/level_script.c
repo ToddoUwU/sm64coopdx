@@ -445,10 +445,11 @@ static void level_cmd_begin_area(void) {
         gAreas[areaIndex].numSecrets = 0;
         gAreas[areaIndex].nextSyncID = 10;
 
-        if (node != NULL) {
-            gAreas[areaIndex].camera = (struct Camera *) node->config.camera;
-        } else {
-            gAreas[areaIndex].camera = NULL;
+        // create_camera() allocated one camera per local player, contiguously
+        struct Camera *cameras = (node != NULL) ? (struct Camera *) node->config.camera : NULL;
+        gAreas[areaIndex].camera = cameras;
+        for (u8 v = 0; v < MAX_LOCAL_PLAYERS; v++) {
+            gAreas[areaIndex].cameras[v] = cameras ? &cameras[v] : NULL;
         }
     }
 

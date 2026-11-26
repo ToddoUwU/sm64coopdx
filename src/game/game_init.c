@@ -600,6 +600,7 @@ void thread5_game_loop(UNUSED void *arg) {
 
     setup_game_memory();
     init_rumble_pak_scheduler_queue();
+    camera_views_init();
     init_controllers();
     create_thread_6();
     save_file_load_all(FALSE);

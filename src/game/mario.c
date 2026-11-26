@@ -457,9 +457,8 @@ void mario_set_bubbled(struct MarioState* m) {
     m->statusForCamera->cameraEvent = 0;
     m->marioObj->activeFlags |= ACTIVE_FLAG_MOVE_THROUGH_GRATE;
 
-    extern s16 gCutsceneTimer;
     gCutsceneTimer = 0;
-    soft_reset_camera(m->area->camera);
+    soft_reset_camera(mario_area_camera(m));
 }
 
 /**
@@ -866,17 +865,17 @@ void update_mario_sound_and_camera(struct MarioState *m) {
 
     // only update for local player
     if (m != &gMarioStates[0]) { return; }
-    if (!m->area || !m->area->camera) { return; }
+    if (!mario_area_camera(m)) { return; }
 
     u32 action = m->action;
-    s32 camPreset = m->area->camera->mode;
+    s32 camPreset = mario_area_camera(m)->mode;
 
     if (action == ACT_FIRST_PERSON) {
         if (m->playerIndex == 0) {
             raise_background_noise(2);
             gCameraMovementFlags &= ~CAM_MOVE_C_UP_MODE;
             // Go back to the last camera mode
-            set_camera_mode(m->area->camera, -1, 1);
+            set_camera_mode(mario_area_camera(m), -1, 1);
         }
     } else if (action == ACT_SLEEPING) {
         if (m->playerIndex == 0) {
@@ -887,7 +886,7 @@ void update_mario_sound_and_camera(struct MarioState *m) {
     if (m->playerIndex == 0) {
         if (!(action & (ACT_FLAG_SWIMMING | ACT_FLAG_METAL_WATER))) {
             if (camPreset == CAMERA_MODE_BEHIND_MARIO || camPreset == CAMERA_MODE_WATER_SURFACE) {
-                set_camera_mode(m->area->camera, m->area->camera->defMode, 1);
+                set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
             }
         }
     }
@@ -1358,8 +1357,8 @@ s32 check_common_hold_action_exits(struct MarioState *m) {
  */
 s32 transition_submerged_to_walking(struct MarioState *m) {
     if (!m) { return FALSE; }
-    if (m->playerIndex == 0 && m->area && m->area->camera) {
-        set_camera_mode(m->area->camera, m->area->camera->defMode, 1);
+    if (m->playerIndex == 0 && mario_area_camera(m)) {
+        set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
     }
 
     vec3s_set(m->angleVel, 0, 0, 0);
@@ -1393,8 +1392,8 @@ s32 set_water_plunge_action(struct MarioState *m) {
         m->faceAngle[0] = 0;
     }
 
-    if (m->playerIndex == 0 && m->area->camera->mode != CAMERA_MODE_WATER_SURFACE) {
-        set_camera_mode(m->area->camera, CAMERA_MODE_WATER_SURFACE, 1);
+    if (m->playerIndex == 0 && mario_area_camera(m)->mode != CAMERA_MODE_WATER_SURFACE) {
+        set_camera_mode(mario_area_camera(m), CAMERA_MODE_WATER_SURFACE, 1);
     }
 
     return set_mario_action(m, ACT_WATER_PLUNGE, 0);
@@ -1523,7 +1522,7 @@ void update_mario_joystick_inputs(struct MarioState *m) {
 
     if (m->intendedMag > 0.0f) {
         if (gLakituState.mode != CAMERA_MODE_NEWCAM) {
-            m->intendedYaw = atan2s(-controller->stickY, controller->stickX) + m->area->camera->yaw;
+            m->intendedYaw = atan2s(-controller->stickY, controller->stickX) + mario_area_camera(m)->yaw;
         } else if (get_first_person_enabled()) {
             m->intendedYaw = atan2s(-controller->stickY, controller->stickX) + gLakituState.yaw;
         } else {
@@ -1696,19 +1695,19 @@ void set_submerged_cam_preset_and_spawn_bubbles(struct MarioState *m) {
 
     if ((m->action & ACT_GROUP_MASK) == ACT_GROUP_SUBMERGED) {
         heightBelowWater = (f32)(m->waterLevel - 80) - m->pos[1];
-        camPreset = m->area->camera->mode;
+        camPreset = mario_area_camera(m)->mode;
 
         if (m->action & ACT_FLAG_METAL_WATER) {
             if (m->playerIndex == 0 && camPreset != CAMERA_MODE_CLOSE) {
-                set_camera_mode(m->area->camera, CAMERA_MODE_CLOSE, 1);
+                set_camera_mode(mario_area_camera(m), CAMERA_MODE_CLOSE, 1);
             }
         } else {
             if (m->playerIndex == 0 && (heightBelowWater > 800.0f) && (camPreset != CAMERA_MODE_BEHIND_MARIO)) {
-                set_camera_mode(m->area->camera, CAMERA_MODE_BEHIND_MARIO, 1);
+                set_camera_mode(mario_area_camera(m), CAMERA_MODE_BEHIND_MARIO, 1);
             }
 
             if (m->playerIndex == 0 && (heightBelowWater < 400.0f) && (camPreset != CAMERA_MODE_WATER_SURFACE)) {
-                set_camera_mode(m->area->camera, CAMERA_MODE_WATER_SURFACE, 1);
+                set_camera_mode(mario_area_camera(m), CAMERA_MODE_WATER_SURFACE, 1);
             }
 
             // As long as Mario isn't drowning or at the top

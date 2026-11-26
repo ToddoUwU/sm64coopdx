@@ -7,6 +7,7 @@
 #include "dialog_ids.h"
 #include "audio/external.h"
 #include "level_update.h"
+#include "local_players.h"
 #include "game_init.h"
 #include "level_update.h"
 #include "main.h"
@@ -475,14 +476,19 @@ void init_mario_after_warp(void) {
     }
 
     if (gCurrentArea) {
-        reset_camera(gCurrentArea->camera);
-        if (sWarpDest.type == WARP_TYPE_SAME_AREA && gCurrentArea->camera->mode == CAMERA_MODE_NEWCAM) {
-            // When we warp to a level in the same area, the camera mode never has the chance
-            // to reset. This is bad if our camera mode is newcam, since when init cam is called
-            // our old camera mode will be set to newcam, which causes newcam to not be able to be
-            // turned off. The fix is setting our mode to newcam's old mode
-            gCurrentArea->camera->mode = gNewCamera.savedMode;
-            gCurrentArea->camera->defMode = gNewCamera.savedDefMode;
+        reset_local_cameras();
+        for (u8 i = 0; i < gLocalPlayerCount; i++) {
+            u8 previous = local_player_scope_begin(i);
+            struct Camera *camera = area_scoped_camera(gCurrentArea);
+            if (sWarpDest.type == WARP_TYPE_SAME_AREA && camera && camera->mode == CAMERA_MODE_NEWCAM) {
+                // When we warp to a level in the same area, the camera mode never has the chance
+                // to reset. This is bad if our camera mode is newcam, since when init cam is called
+                // our old camera mode will be set to newcam, which causes newcam to not be able to be
+                // turned off. The fix is setting our mode to newcam's old mode
+                camera->mode = gNewCamera.savedMode;
+                camera->defMode = gNewCamera.savedDefMode;
+            }
+            local_player_scope_end(previous);
         }
     }
     sWarpDest.type = WARP_TYPE_NOT_WARPING;
@@ -637,7 +643,7 @@ void warp_credits(void) {
     set_mario_action(gMarioState, marioAction, 0);
 
     if (gCurrentArea) {
-        reset_camera(gCurrentArea->camera);
+        reset_local_cameras();
     }
 
     sWarpDest.type = WARP_TYPE_NOT_WARPING;
@@ -1210,7 +1216,7 @@ void basic_update(UNUSED s16 *arg) {
     update_hud_values();
 
     if (gCurrentArea != NULL) {
-        update_camera(gCurrentArea->camera);
+        update_local_cameras();
     }
 }
 
@@ -1328,7 +1334,7 @@ s32 play_mode_normal(void) {
     update_hud_values();
 
     if (gCurrentArea != NULL) {
-        update_camera(gCurrentArea->camera);
+        update_local_cameras();
     }
 
     initiate_painting_warp(-1);
@@ -1442,7 +1448,7 @@ s32 play_mode_change_area(void) {
     //! This maybe was supposed to be sTransitionTimer == -1? sTransitionUpdate
     // is never set to -1.
     if (sTransitionUpdate == (void (*)(s16 *)) - 1) {
-        update_camera(gCurrentArea->camera);
+        update_local_cameras();
     } else if (sTransitionUpdate != NULL) {
         sTransitionUpdate(&sTransitionTimer);
     }
@@ -1828,7 +1834,7 @@ s32 init_level(void) {
         }
 
         if (gCurrentArea != NULL) {
-            reset_camera(gCurrentArea->camera);
+            reset_local_cameras();
 
             if (gCurrDemoInput != NULL) {
                 set_mario_action(gMarioState, ACT_IDLE, 0);

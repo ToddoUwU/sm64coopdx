@@ -18,7 +18,11 @@
 #include "pc/lua/utils/smlua_camera_utils.h"
 #include "pc/lua/smlua_hooks.h"
 
-struct FirstPersonCamera gFirstPersonCamera = {
+// first person belongs to the player in scope and reads that player's controller
+#undef gPlayer1Controller
+#define gPlayer1Controller (&gControllers[gCurrLocalPlayer])
+
+const struct FirstPersonCamera gFirstPersonCameraDefaults = {
     .enabled = false,
     .forcePitch = false,
     .forceYaw = false,
@@ -52,7 +56,7 @@ bool first_person_check_cancels(struct MarioState *m) {
 }
 
 bool get_first_person_enabled(void) {
-    return gFirstPersonCamera.enabled && !first_person_check_cancels(&gMarioStates[0]);
+    return gFirstPersonCamera.enabled && !first_person_check_cancels(current_local_mario());
 }
 
 void set_first_person_enabled(bool enable) {
@@ -60,7 +64,7 @@ void set_first_person_enabled(bool enable) {
 }
 
 static void first_person_camera_update(void) {
-    struct MarioState *m = &gMarioStates[0];
+    struct MarioState *m = current_local_mario();
     f32 sensX = 0.3f * camera_config_get_x_sensitivity();
     f32 sensY = 0.4f * camera_config_get_y_sensitivity();
 
@@ -111,7 +115,7 @@ static void first_person_camera_update(void) {
     }
 
     gLakituState.yaw = gFirstPersonCamera.yaw;
-    m->area->camera->yaw = gFirstPersonCamera.yaw;
+    mario_area_camera(m)->yaw = gFirstPersonCamera.yaw;
 
     // update crouch
     if (mario_is_crouching(m) || m->action == ACT_LEDGE_GRAB) {
@@ -130,7 +134,7 @@ static void first_person_camera_update(void) {
     gLakituState.pos[0] = (m->pos[0] + gFirstPersonCamera.offset[0]) + coss(gFirstPersonCamera.pitch) * sins(gFirstPersonCamera.yaw);
     gLakituState.pos[1] = (m->pos[1] + gFirstPersonCamera.offset[1]) + sins(gFirstPersonCamera.pitch) + (FIRST_PERSON_MARIO_HEAD_POS - gFirstPersonCamera.crouch);
     gLakituState.pos[2] = (m->pos[2] + gFirstPersonCamera.offset[2]) + coss(gFirstPersonCamera.pitch) * coss(gFirstPersonCamera.yaw);
-    vec3f_copy(m->area->camera->pos, gLakituState.pos);
+    vec3f_copy(mario_area_camera(m)->pos, gLakituState.pos);
     vec3f_copy(gLakituState.curPos, gLakituState.pos);
     vec3f_copy(gLakituState.goalPos, gLakituState.pos);
 
@@ -138,7 +142,7 @@ static void first_person_camera_update(void) {
     gLakituState.focus[0] = (m->pos[0] + gFirstPersonCamera.offset[0]) - 100 * coss(gFirstPersonCamera.pitch) * sins(gFirstPersonCamera.yaw);
     gLakituState.focus[1] = (m->pos[1] + gFirstPersonCamera.offset[1]) - 100 * sins(gFirstPersonCamera.pitch) + (FIRST_PERSON_MARIO_HEAD_POS - gFirstPersonCamera.crouch);
     gLakituState.focus[2] = (m->pos[2] + gFirstPersonCamera.offset[2]) - 100 * coss(gFirstPersonCamera.pitch) * coss(gFirstPersonCamera.yaw);
-    vec3f_copy(m->area->camera->focus, gLakituState.focus);
+    vec3f_copy(mario_area_camera(m)->focus, gLakituState.focus);
     vec3f_copy(gLakituState.curFocus, gLakituState.focus);
     vec3f_copy(gLakituState.goalFocus, gLakituState.focus);
 
@@ -155,15 +159,15 @@ static void first_person_camera_update(void) {
 
 void first_person_update(void) {
     if (gFirstPersonCamera.enabled && !gDjuiInMainMenu) {
-        struct MarioState *m = &gMarioStates[0];
+        struct MarioState *m = current_local_mario();
 
         // check cancels
         bool cancel = first_person_check_cancels(m);
         if (cancel) { return; }
 
-        if (m->action == ACT_SHOT_FROM_CANNON && m->area->camera->mode == CAMERA_MODE_INSIDE_CANNON) {
+        if (m->action == ACT_SHOT_FROM_CANNON && mario_area_camera(m)->mode == CAMERA_MODE_INSIDE_CANNON) {
             gFirstPersonCamera.yaw = m->faceAngle[1] + 0x8000;
-            m->area->camera->mode = CAMERA_MODE_FREE_ROAM;
+            mario_area_camera(m)->mode = CAMERA_MODE_FREE_ROAM;
         }
 
         if (gFirstPersonCamera.pitch <= -0x3F00 &&
@@ -177,9 +181,9 @@ void first_person_update(void) {
         m->marioBodyState->modelState = 0x100;
         if (m->heldObj) {
             Vec3f camDir = {
-                m->area->camera->focus[0] - m->area->camera->pos[0],
-                m->area->camera->focus[1] - m->area->camera->pos[1],
-                m->area->camera->focus[2] - m->area->camera->pos[2]
+                mario_area_camera(m)->focus[0] - mario_area_camera(m)->pos[0],
+                mario_area_camera(m)->focus[1] - mario_area_camera(m)->pos[1],
+                mario_area_camera(m)->focus[2] - mario_area_camera(m)->pos[2]
             };
             vec3f_normalize(camDir);
             vec3f_mul(camDir, 100);

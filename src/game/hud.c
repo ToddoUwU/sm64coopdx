@@ -625,7 +625,7 @@ void render_hud(void) {
 
         bool showHud = (!gDjuiInMainMenu && !gOverrideHideHud);
 
-        if (gCurrentArea != NULL && gCurrentArea->camera != NULL && gCurrentArea->camera->mode == CAMERA_MODE_INSIDE_CANNON) {
+        if (area_scoped_camera(gCurrentArea) != NULL && area_scoped_camera(gCurrentArea)->mode == CAMERA_MODE_INSIDE_CANNON) {
             render_hud_cannon_reticle();
         }
 

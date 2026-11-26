@@ -244,6 +244,7 @@ void clear_areas(void) {
         gAreaData[i].instantWarps = NULL;
         gAreaData[i].objectSpawnInfos = NULL;
         gAreaData[i].camera = NULL;
+        for (u8 v = 0; v < MAX_LOCAL_PLAYERS; v++) { gAreaData[i].cameras[v] = NULL; }
         gAreaData[i].unused28 = NULL;
         gAreaData[i].whirlpools[0] = NULL;
         gAreaData[i].whirlpools[1] = NULL;

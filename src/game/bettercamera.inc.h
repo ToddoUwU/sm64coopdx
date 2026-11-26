@@ -34,7 +34,7 @@ static const f32 NEWCAM_DISTANCES[] = {
 
 static const u32 NEWCAM_NUM_DISTANCES = sizeof(NEWCAM_DISTANCES) / sizeof(*NEWCAM_DISTANCES);
 
-NewCamera gNewCamera = {
+static const NewCamera sNewCameraDefaults = {
 
     // Status
     .isActive               = false,
@@ -165,7 +165,7 @@ static void newcam_toggle(bool enabled) {
 }
 
 // These are the default settings for Puppycam. You may change them to change how they'll be set for first timers.
-void newcam_init_settings(void) {
+static void newcam_init_settings_for_current_view(void) {
     gNewCamera.sensitivityX = newcam_clamp(camera_config_get_x_sensitivity(), 1, 100) * 5;
     gNewCamera.sensitivityY = newcam_clamp(camera_config_get_y_sensitivity(), 1, 100) * 5;
     gNewCamera.panLevel     = newcam_clamp(camera_config_get_pan_level(), 0, 100);
@@ -185,6 +185,10 @@ void newcam_init_settings(void) {
     }
 
     newcam_toggle(camera_config_is_free_cam_enabled() || gDjuiInMainMenu);
+}
+
+void newcam_init_settings(void) {
+    camera_views_for_each(newcam_init_settings_for_current_view);
 }
 
 static void newcam_rotate_button(void) {
@@ -374,11 +378,9 @@ static void newcam_update_values(void) {
 
     // Force centering when changing action
     // Place the camera behind Mario during the ACT_SHOT_FROM_CANNON action
-    static u32 sLastAction = 0;
-    static bool sForceCentering = false;
-    if (sLastAction != gMarioState->statusForCamera->action) {
-        sLastAction = gMarioState->statusForCamera->action;
-        sForceCentering = true;
+    if (gCurrCameraView->newcamLastAction != gMarioState->statusForCamera->action) {
+        gCurrCameraView->newcamLastAction = gMarioState->statusForCamera->action;
+        gCurrCameraView->newcamForceCentering = true;
         switch (gMarioState->statusForCamera->action) {
             case ACT_SHOT_FROM_CANNON:
                 gNewCamera.yaw = -gMarioState->statusForCamera->faceAngle[1] - 0x4000;
@@ -389,9 +391,9 @@ static void newcam_update_values(void) {
     // WTF is this
     if (centering) {
         if (fabs(gNewCamera.yawAccel) > 32 || fabs(gNewCamera.tiltAccel) > 32) {
-            sForceCentering = false;
+            gCurrCameraView->newcamForceCentering = false;
         }
-        if (!sForceCentering) {
+        if (!gCurrCameraView->newcamForceCentering) {
             centering = false;
         }
     }
@@ -634,7 +636,7 @@ static void newcam_loop(struct Camera *c) {
         gNewCamera.tiltAccel *= 0.6f;
     }
     newcam_position_cam();
-    if (gMarioObject) {
+    if (current_local_mario()->marioObj) {
         newcam_apply_values(c);
     }
 }

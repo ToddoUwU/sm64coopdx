@@ -886,7 +886,7 @@ void reset_mario_pitch(struct MarioState *m) {
     if (!m) { return; }
     if (m->action == ACT_WATER_JUMP || m->action == ACT_SHOT_FROM_CANNON || m->action == ACT_FLYING) {
         if (m->playerIndex == 0) {
-            set_camera_mode(m->area->camera, m->area->camera->defMode, 1);
+            set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
         }
         m->faceAngle[0] = 0;
     }
@@ -1582,7 +1582,7 @@ u32 interact_player_pvp(struct MarioState* attacker, struct MarioState* victim) 
             if (victim->action == ACT_FIRST_PERSON) {
                 // without this branch, the player will be stuck in first person
                 raise_background_noise(2);
-                set_camera_mode(victim->area->camera, -1, 1);
+                set_camera_mode(mario_area_camera(victim), -1, 1);
                 victim->input &= ~INPUT_FIRST_PERSON;
             }
             set_mario_action(victim, ACT_FREEFALL, 0);

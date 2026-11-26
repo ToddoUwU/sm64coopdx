@@ -5,6 +5,7 @@
 
 #include "types.h"
 #include "camera.h"
+#include "local_players.h"
 #include "engine/graph_node.h"
 
 struct WarpNode
@@ -87,6 +88,8 @@ struct Area
     /*????*/ u8 numRedCoins;
     /*????*/ u8 numSecrets;
     /*????*/ u32 nextSyncID;
+    // one camera per local player (split screen); camera == cameras[0]
+    struct Camera *cameras[MAX_LOCAL_PLAYERS];
 };
 
 // All the transition data to be used in screen_transition.c

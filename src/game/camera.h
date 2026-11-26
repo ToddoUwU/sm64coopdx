@@ -698,21 +698,14 @@ struct LakituState
 // bss order hack to not affect BSS order. if possible, remove me, but it will be hard to match otherwise
 #ifndef INCLUDED_FROM_CAMERA_C
 // BSS
-extern s16 sSelectionFlags;
-extern s16 sCameraSoundFlags;
-extern u16 sCButtonsPressed;
 extern struct PlayerCameraState gPlayerCameraState[MAX_PLAYERS];
-extern struct LakituState gLakituState;
-extern s16 gCameraMovementFlags;
 extern s32 gObjCutsceneDone;
-extern struct Camera *gCamera;
 #endif
 
-extern struct CameraFOVStatus gFOVState;
 extern u8 gCameraUseCourseSpecificSettings;
-extern struct Object *gCutsceneFocus;
 extern struct Object *gSecondCameraFocus;
-extern u8 gRecentCutscene;
+// gCamera, gLakituState, gFOVState, gCameraMovementFlags, gCutsceneFocus, gRecentCutscene, ... are per local
+// player: see camera_view.h (included at the end of this header)
 
 /* |description|
 Skips camera interpolation for a frame, locking the camera instantly to the target position.
@@ -1290,5 +1283,7 @@ void center_rom_hack_camera(void);
 
 void romhack_camera_init_settings(void);
 void romhack_camera_reset_settings(void);
+
+#include "camera_view.h"
 
 #endif // CAMERA_H

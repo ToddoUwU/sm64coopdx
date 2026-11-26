@@ -44,8 +44,10 @@ typedef struct {
 
 } NewCamera;
 
-extern NewCamera gNewCamera;
 
 void newcam_init_settings(void);
+
+// gNewCamera is per local player: see camera_view.h
+#include "camera_view.h"
 
 #endif // BETTERCAMERA_H

@@ -225,7 +225,7 @@ s32 act_climbing_pole(struct MarioState *m) {
     if (m->usedObj == NULL) { m->usedObj = cur_obj_find_nearest_pole(); }
     s32 sp24;
     struct Object *marioObj = m->marioObj;
-    s16 cameraAngle = m->area->camera->yaw;
+    s16 cameraAngle = mario_area_camera(m)->yaw;
 
 #ifndef VERSION_JP
     if (m->health < 0x100) {
@@ -1043,7 +1043,7 @@ void mario_pop_bubble(struct MarioState* m) {
     m->invincTimer = 30 * 3;
     if (m->playerIndex == 0) {
         if (m->statusForCamera) { m->statusForCamera->action = m->action; }
-        soft_reset_camera(m->area->camera);
+        soft_reset_camera(mario_area_camera(m));
     }
     u8 underWater = (m->pos[1] < ((f32)m->waterLevel));
     set_mario_action(m, underWater ? ACT_WATER_IDLE : ACT_FREEFALL, 0);
@@ -1051,8 +1051,8 @@ void mario_pop_bubble(struct MarioState* m) {
 
 s32 act_bubbled(struct MarioState* m) {
     if (!m) { return 0; }
-    if (m->playerIndex == 0 && m->area->camera->mode == CAMERA_MODE_WATER_SURFACE) {
-        set_camera_mode(m->area->camera, CAMERA_MODE_FREE_ROAM, 1);
+    if (m->playerIndex == 0 && mario_area_camera(m)->mode == CAMERA_MODE_WATER_SURFACE) {
+        set_camera_mode(mario_area_camera(m), CAMERA_MODE_FREE_ROAM, 1);
     }
     struct MarioState* targetMarioState = nearest_antibubble_mario_state_to_object(m->marioObj);
     if (targetMarioState == NULL) {
