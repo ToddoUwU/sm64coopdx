@@ -494,8 +494,11 @@ void render_game(void) {
         bool dialogInView = viewCount > 1 && gMenuMode == -1 && get_dialog_id() != DIALOG_NONE;
         geo_begin_views(viewCount);
 
+        struct MarioState *previousMario = gMarioState;
         for (u8 view = 0; view < viewCount; view++) {
             LOCAL_PLAYER_SCOPE(view);
+            // render-time code (HUD head icon, geo callbacks) means the view's own Mario
+            gMarioState = local_mario(view);
             if (viewCount > 1) { select_render_view(view, viewCount); }
             render_game_view();
 
@@ -507,6 +510,7 @@ void render_game(void) {
                 render_text_labels();
             }
         }
+        gMarioState = previousMario;
         if (viewCount > 1) { select_render_view(0, 1); }
 
         // shared screens: the whole window

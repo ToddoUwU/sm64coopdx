@@ -51,47 +51,62 @@ struct CameraHUD {
     s16 status;
 };
 
-// Stores health segmented value defined by numHealthWedges
-// When the HUD is rendered this value is 8, full health.
-static s16 sPowerMeterStoredHealth;
-
-static struct PowerMeterHUD sPowerMeterHUD = {
-    POWER_METER_HIDDEN,
-    140,
-    166,
-    1.0,
+// HUD animation state of one local player's view (split screen): the power meter sliding in and out, and the
+// camera status icon. The original names are macros over the view of the player in scope.
+struct HudView {
+    // Stores health segmented value defined by numHealthWedges
+    // When the HUD is rendered this value is 8, full health.
+    s16 powerMeterStoredHealth;
+    struct PowerMeterHUD powerMeterHUD;
+    // Power Meter timer that keeps counting when it's visible.
+    // Gets reset when the health is filled and stops counting
+    // when the power meter is hidden.
+    s32 powerMeterVisibleTimer;
+    struct CameraHUD cameraHUD;
+    u32 powerMeterPrevTimestamp;
+    f32 powerMeterPrevY;
+    Gfx *powerMeterDisplayListPos;
+    Mtx *powerMeterMtx;
 };
 
-// Power Meter timer that keeps counting when it's visible.
-// Gets reset when the health is filled and stops counting
-// when the power meter is hidden.
-s32 sPowerMeterVisibleTimer = 0;
+#define HUD_VIEW_DEFAULT { .powerMeterHUD = { POWER_METER_HIDDEN, 140, 166, 1.0 }, .cameraHUD = { CAM_STATUS_NONE } }
+static struct HudView sHudViews[MAX_LOCAL_PLAYERS] = {
+    HUD_VIEW_DEFAULT, HUD_VIEW_DEFAULT, HUD_VIEW_DEFAULT, HUD_VIEW_DEFAULT
+};
+
+#define sPowerMeterStoredHealth   (sHudViews[gCurrLocalPlayer].powerMeterStoredHealth)
+#define sPowerMeterHUD            (sHudViews[gCurrLocalPlayer].powerMeterHUD)
+#define sPowerMeterVisibleTimer   (sHudViews[gCurrLocalPlayer].powerMeterVisibleTimer)
+#define sCameraHUD                (sHudViews[gCurrLocalPlayer].cameraHUD)
+#define sPowerMeterPrevTimestamp  (sHudViews[gCurrLocalPlayer].powerMeterPrevTimestamp)
+#define sPowerMeterPrevY          (sHudViews[gCurrLocalPlayer].powerMeterPrevY)
+#define sPowerMeterDisplayListPos (sHudViews[gCurrLocalPlayer].powerMeterDisplayListPos)
+#define sPowerMeterMtx            (sHudViews[gCurrLocalPlayer].powerMeterMtx)
 
 UNUSED static struct UnusedHUDStruct sUnusedHUDValues = { 0x00, 0x0A, 0x00 };
 
-static struct CameraHUD sCameraHUD = { CAM_STATUS_NONE };
-
-static u32 sPowerMeterPrevTimestamp;
-static f32 sPowerMeterPrevY;
-static Gfx *sPowerMeterDisplayListPos = NULL;
-static Mtx *sPowerMeterMtx = NULL;
-
 void patch_hud_before(void) {
-    if (sPowerMeterDisplayListPos != NULL) {
-        sPowerMeterPrevY = sPowerMeterHUD.y;
-        sPowerMeterPrevTimestamp = gGlobalTimer;
-        sPowerMeterDisplayListPos = NULL;
-        sPowerMeterMtx = NULL;
+    for (u8 v = 0; v < MAX_LOCAL_PLAYERS; v++) {
+        LOCAL_PLAYER_SCOPE(v);
+        if (sPowerMeterDisplayListPos != NULL) {
+            sPowerMeterPrevY = sPowerMeterHUD.y;
+            sPowerMeterPrevTimestamp = gGlobalTimer;
+            sPowerMeterDisplayListPos = NULL;
+            sPowerMeterMtx = NULL;
+        }
     }
 }
 
 void patch_hud_interpolated(f32 delta) {
-    if (sPowerMeterDisplayListPos && sPowerMeterMtx) {
-        Mtx* mtx = sPowerMeterMtx;
-        f32 interpY = delta_interpolate_f32(sPowerMeterPrevY, (f32)sPowerMeterHUD.y, delta);
-        guTranslate(mtx, (f32) sPowerMeterHUD.x, interpY, 0);
-        gSPMatrix(sPowerMeterDisplayListPos, VIRTUAL_TO_PHYSICAL(mtx),
-              G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+    for (u8 v = 0; v < gLocalPlayerCount; v++) {
+        LOCAL_PLAYER_SCOPE(v);
+        if (sPowerMeterDisplayListPos && sPowerMeterMtx) {
+            Mtx* mtx = sPowerMeterMtx;
+            f32 interpY = delta_interpolate_f32(sPowerMeterPrevY, (f32)sPowerMeterHUD.y, delta);
+            guTranslate(mtx, (f32) sPowerMeterHUD.x, interpY, 0);
+            gSPMatrix(sPowerMeterDisplayListPos, VIRTUAL_TO_PHYSICAL(mtx),
+                  G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
+        }
     }
 }
 
@@ -354,7 +369,7 @@ void render_hud_cap_timer(void) {
         [                 MARIO_METAL_CAP | MARIO_VANISH_CAP] = { exclamation_box_seg8_texture_08014628, exclamation_box_seg8_texture_08014628, exclamation_box_seg8_texture_08012E28, exclamation_box_seg8_texture_08012E28 },
         [MARIO_WING_CAP | MARIO_METAL_CAP | MARIO_VANISH_CAP] = { exclamation_box_seg8_texture_08015E28, exclamation_box_seg8_texture_08014628, exclamation_box_seg8_texture_08014628, exclamation_box_seg8_texture_08012E28 },
     };
-    struct MarioState *m = &gMarioStates[0];
+    struct MarioState *m = current_local_mario();
     u32 capFlags = m->flags & MARIO_SPECIAL_CAPS;
     if (capFlags) {
         s32 capTimer = m->capTimer;
@@ -410,7 +425,7 @@ static void render_hud_radar(struct MarioState *m, struct Object *target, const 
  * Renders the direction and distance to the nearest red coin.
  */
 void render_hud_red_coins_and_secrets_radar(void) {
-    struct MarioState *m = &gMarioStates[0];
+    struct MarioState *m = current_local_mario();
     if (m->marioObj && gCamera) {
         s32 y = 31;
 
@@ -568,7 +583,7 @@ void render_hud_camera_status(void) {
 
     switch (sCameraHUD.status & CAM_STATUS_MODE_GROUP) {
         case CAM_STATUS_MARIO:
-            render_hud_tex_lut(x + 16, y, (*cameraLUT)[(gMarioStates[0].character) ? gMarioStates[0].character->cameraHudHead : GLYPH_CAM_MARIO_HEAD]);
+            render_hud_tex_lut(x + 16, y, (*cameraLUT)[(current_local_mario()->character) ? current_local_mario()->character->cameraHudHead : GLYPH_CAM_MARIO_HEAD]);
             break;
         case CAM_STATUS_LAKITU:
             render_hud_tex_lut(x + 16, y, (*cameraLUT)[GLYPH_CAM_LAKITU_HEAD]);

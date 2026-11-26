@@ -25,9 +25,10 @@
  */
 
 s16 gEnvFxBubbleConfig[10];
-static Gfx *sGfxCursor; // points to end of display list for bubble particles
-static s32 sBubbleParticleCount;
-static s32 sBubbleParticleMaxCount;
+// per split screen view (see struct EnvFxView)
+#define sGfxCursor              (gEnvFxViews[gCurrLocalPlayer].bubbleGfxCursor) // end of the bubble display list
+#define sBubbleParticleCount    (gEnvFxViews[gCurrLocalPlayer].bubbleParticleCount)
+#define sBubbleParticleMaxCount (gEnvFxViews[gCurrLocalPlayer].bubbleParticleMaxCount)
 
 UNUSED s32 D_80330690 = 0;
 UNUSED s32 D_80330694 = 0;
@@ -41,24 +42,30 @@ Vtx_t gBubbleTempVtx[3] = {
 
 Gfx *envfx_update_bubble_particles_internal(s32 mode, UNUSED Vec3s marioPos, Vec3s camFrom, Vec3s camTo, u8 interpolated);
 
-static s32 sBubbleGfxMode;
-static Gfx* sBubbleGfxPos;
-static Vtx* sBubbleInternalGfxPos[65 / 5];
-static Vec3s sBubbleGfxCamFrom;
-static Vec3s sBubbleGfxCamTo;
+#define sBubbleGfxMode        (gEnvFxViews[gCurrLocalPlayer].bubbleGfxMode)
+#define sBubbleGfxPos         (gEnvFxViews[gCurrLocalPlayer].bubbleGfxPos)
+#define sBubbleInternalGfxPos (gEnvFxViews[gCurrLocalPlayer].bubbleInternalGfxPos)
+#define sBubbleGfxCamFrom     (gEnvFxViews[gCurrLocalPlayer].bubbleGfxCamFrom)
+#define sBubbleGfxCamTo       (gEnvFxViews[gCurrLocalPlayer].bubbleGfxCamTo)
 
 void patch_bubble_particles_before(void) {
-    if (sBubbleGfxPos) {
-        for (s32 i = 0; i < sBubbleParticleMaxCount; i++) {
-            vec3s_set(gEnvFxBuffer[i].prevPos, gEnvFxBuffer[i].xPos, gEnvFxBuffer[i].yPos, gEnvFxBuffer[i].zPos);
+    for (u8 v = 0; v < MAX_LOCAL_PLAYERS; v++) {
+        LOCAL_PLAYER_SCOPE(v);
+        if (sBubbleGfxPos) {
+            for (s32 i = 0; i < sBubbleParticleMaxCount; i++) {
+                vec3s_set(gEnvFxBuffer[i].prevPos, gEnvFxBuffer[i].xPos, gEnvFxBuffer[i].yPos, gEnvFxBuffer[i].zPos);
+            }
+            sBubbleGfxPos = NULL;
         }
-        sBubbleGfxPos = NULL;
     }
 }
 
 void patch_bubble_particles_interpolated(UNUSED f32 delta) {
-    if (sBubbleGfxPos) {
-        envfx_update_bubble_particles_internal(sBubbleGfxMode, NULL, sBubbleGfxCamFrom, sBubbleGfxCamTo, true);
+    for (u8 v = 0; v < gLocalPlayerCount; v++) {
+        LOCAL_PLAYER_SCOPE(v);
+        if (sBubbleGfxPos) {
+            envfx_update_bubble_particles_internal(sBubbleGfxMode, NULL, sBubbleGfxCamFrom, sBubbleGfxCamTo, true);
+        }
     }
 }
 

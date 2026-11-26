@@ -28,14 +28,19 @@ Gfx *geo_envfx_main(s32 callContext, struct GraphNode *node, UNUSED Mat4 mtxf) {
         u32 *params = &execNode->parameter; // accessed a s32 as 2 u16s by pointing to the variable and
                                             // casting to a local struct as necessary.
 
-        if (GET_HIGH_U16_OF_32(*params) != gAreaUpdateCounter) {
+        // each split screen view updates its own particles once per tick
+        static u16 sEnvFxViewUpdateCounter[MAX_LOCAL_PLAYERS] = { 0 };
+        bool viewUpdated = split_screen_active() ? (sEnvFxViewUpdateCounter[gCurrLocalPlayer] == (u16) gAreaUpdateCounter)
+                                                 : (GET_HIGH_U16_OF_32(*params) == gAreaUpdateCounter);
+        if (!viewUpdated) {
+            sEnvFxViewUpdateCounter[gCurrLocalPlayer] = (u16) gAreaUpdateCounter;
             UNUSED struct Camera *sp2C = gCurGraphNodeCamera->config.camera;
             gReadOnlyEnvFx = GET_LOW_U16_OF_32(*params);
             s32 snowMode = gOverrideEnvFx == -1 ? gReadOnlyEnvFx : gOverrideEnvFx;
 
             vec3f_to_vec3s(camTo, gCurGraphNodeCamera->focus);
             vec3f_to_vec3s(camFrom, gCurGraphNodeCamera->pos);
-            vec3f_to_vec3s(marioPos, gPlayerCameraState->pos);
+            vec3f_to_vec3s(marioPos, sMarioCamState->pos);
             particleList = envfx_update_particles(snowMode, marioPos, camTo, camFrom);
             if (particleList != NULL) {
 #if 0
@@ -57,7 +62,10 @@ Gfx *geo_envfx_main(s32 callContext, struct GraphNode *node, UNUSED Mat4 mtxf) {
         vec3s_copy(camTo, gVec3sZero);
         vec3s_copy(camFrom, gVec3sZero);
         vec3s_copy(marioPos, gVec3sZero);
-        envfx_update_particles(ENVFX_MODE_NONE, marioPos, camTo, camFrom);
+        for (u8 v = 0; v < MAX_LOCAL_PLAYERS; v++) {
+            LOCAL_PLAYER_SCOPE(v);
+            envfx_update_particles(ENVFX_MODE_NONE, marioPos, camTo, camFrom);
+        }
     }
 
     return gfx;

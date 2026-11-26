@@ -48,6 +48,8 @@ void gfx_split_screen_view_rect(uint8_t index, uint8_t count, uint32_t winW, uin
 // while building a view's display list (with gSPView) so aspect-dependent code matches; G_VIEW_EXT calls it
 // again when the display list is drawn.
 void gfx_set_view(uint8_t index, uint8_t count);
+// The view selected with gfx_set_view (count 1 = whole window).
+void gfx_get_view(uint8_t *index, uint8_t *count);
 void gfx_run(Gfx *commands);
 void gfx_end_frame_render(void);
 void gfx_display_frame(void);

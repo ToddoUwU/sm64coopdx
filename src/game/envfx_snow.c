@@ -32,13 +32,9 @@ struct SnowFlakeVertex {
     s16 z;
 };
 
-struct EnvFxParticle *gEnvFxBuffer;
-Vec3i gSnowCylinderLastPos;
-s16 gSnowParticleCount;
-s16 gSnowParticleMaxCount;
+struct EnvFxView gEnvFxViews[MAX_LOCAL_PLAYERS] = { 0 };
 
 /* DATA */
-s8 gEnvFxMode = 0;
 UNUSED s32 D_80330644 = 0;
 
 /// Template for a snow particle triangle
@@ -57,25 +53,31 @@ extern void *tiny_bubble_dl_0B006CD8;
 
 Gfx *envfx_update_snow_internal(s32 snowMode, Vec3s marioPos, Vec3s camFrom, Vec3s camTo, u8 interpolated);
 
-static s32   sSnowGfxMode;
-static Gfx*  sSnowGfxPos;
-static Vtx*  sSnowInternalGfxPos[140 / 5];
-static Vec3s sSnowGfxCamFrom;
-static Vec3s sSnowGfxCamTo;
-static Vec3s sSnowGfxMarioPos;
+#define sSnowGfxMode        (gEnvFxViews[gCurrLocalPlayer].snowGfxMode)
+#define sSnowGfxPos         (gEnvFxViews[gCurrLocalPlayer].snowGfxPos)
+#define sSnowInternalGfxPos (gEnvFxViews[gCurrLocalPlayer].snowInternalGfxPos)
+#define sSnowGfxCamFrom     (gEnvFxViews[gCurrLocalPlayer].snowGfxCamFrom)
+#define sSnowGfxCamTo       (gEnvFxViews[gCurrLocalPlayer].snowGfxCamTo)
+#define sSnowGfxMarioPos    (gEnvFxViews[gCurrLocalPlayer].snowGfxMarioPos)
 
 void patch_snow_particles_before(void) {
-    if (sSnowGfxPos) {
-        for (s32 i = 0; i < gSnowParticleCount; i++) {
-            vec3s_set((gEnvFxBuffer + i)->prevPos, (gEnvFxBuffer + i)->xPos, (gEnvFxBuffer + i)->yPos, (gEnvFxBuffer + i)->zPos);
+    for (u8 v = 0; v < MAX_LOCAL_PLAYERS; v++) {
+        LOCAL_PLAYER_SCOPE(v);
+        if (sSnowGfxPos) {
+            for (s32 i = 0; i < gSnowParticleCount; i++) {
+                vec3s_set((gEnvFxBuffer + i)->prevPos, (gEnvFxBuffer + i)->xPos, (gEnvFxBuffer + i)->yPos, (gEnvFxBuffer + i)->zPos);
+            }
+            sSnowGfxPos = NULL;
         }
-        sSnowGfxPos = NULL;
     }
 }
 
 void patch_snow_particles_interpolated(UNUSED f32 delta) {
-    if (sSnowGfxPos) {
-        envfx_update_snow_internal(sSnowGfxMode, sSnowGfxMarioPos, sSnowGfxCamFrom, sSnowGfxCamTo, true);
+    for (u8 v = 0; v < gLocalPlayerCount; v++) {
+        LOCAL_PLAYER_SCOPE(v);
+        if (sSnowGfxPos) {
+            envfx_update_snow_internal(sSnowGfxMode, sSnowGfxMarioPos, sSnowGfxCamFrom, sSnowGfxCamTo, true);
+        }
     }
 }
 

@@ -32,12 +32,44 @@ struct EnvFxParticle {
     Vec3s prevPos;
 };
 
-extern s8 gEnvFxMode;
-extern UNUSED s32 D_80330644;
+#include "local_players.h"
 
-extern struct EnvFxParticle *gEnvFxBuffer;
-extern Vec3i gSnowCylinderLastPos;
-extern s16 gSnowParticleCount;
+#define ENVFX_SNOW_INTERNAL_GFX_SLOTS (140 / 5)
+#define ENVFX_BUBBLE_INTERNAL_GFX_SLOTS (65 / 5)
+
+// Snow, bubbles and flowers are particles placed around the camera, so each split screen view keeps its own
+// particles and display list records. The original names are macros over the view of the player in scope.
+struct EnvFxView {
+    struct EnvFxParticle *buffer;
+    Vec3i snowCylinderLastPos;
+    s16 snowParticleCount;
+    s16 snowParticleMaxCount;
+    s8 mode;
+
+    s32 snowGfxMode;
+    Gfx *snowGfxPos;
+    Vtx *snowInternalGfxPos[ENVFX_SNOW_INTERNAL_GFX_SLOTS];
+    Vec3s snowGfxCamFrom;
+    Vec3s snowGfxCamTo;
+    Vec3s snowGfxMarioPos;
+
+    Gfx *bubbleGfxCursor;
+    s32 bubbleParticleCount;
+    s32 bubbleParticleMaxCount;
+    s32 bubbleGfxMode;
+    Gfx *bubbleGfxPos;
+    Vtx *bubbleInternalGfxPos[ENVFX_BUBBLE_INTERNAL_GFX_SLOTS];
+    Vec3s bubbleGfxCamFrom;
+    Vec3s bubbleGfxCamTo;
+};
+extern struct EnvFxView gEnvFxViews[MAX_LOCAL_PLAYERS];
+
+#define gEnvFxMode              (gEnvFxViews[gCurrLocalPlayer].mode)
+#define gEnvFxBuffer            (gEnvFxViews[gCurrLocalPlayer].buffer)
+#define gSnowCylinderLastPos    (gEnvFxViews[gCurrLocalPlayer].snowCylinderLastPos)
+#define gSnowParticleCount      (gEnvFxViews[gCurrLocalPlayer].snowParticleCount)
+#define gSnowParticleMaxCount   (gEnvFxViews[gCurrLocalPlayer].snowParticleMaxCount)
+extern UNUSED s32 D_80330644;
 
 Gfx *envfx_update_particles(s32 snowMode, Vec3s marioPos, Vec3s camTo, Vec3s camFrom);
 void orbit_from_positions(Vec3s from, Vec3s to, s16 *radius, s16 *pitch, s16 *yaw);

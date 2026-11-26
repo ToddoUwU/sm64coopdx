@@ -16,7 +16,9 @@ struct StateExtras {
     f32 prevScale;
     bool inited;
 };
-static struct StateExtras sStateExtras[MAX_PLAYERS];
+// per split screen view: a name tag sits at a different screen position in each view
+static struct StateExtras sStateExtrasByView[MAX_LOCAL_PLAYERS][MAX_PLAYERS];
+#define sStateExtras (sStateExtrasByView[gCurrLocalPlayer])
 
 void djui_hud_print_outlined_text_interpolated(const char* text, f32 prevX, f32 prevY, f32 prevScale, f32 x, f32 y, f32 scale, u8 r, u8 g, u8 b, u8 a, f32 outlineDarkness) {
     f32 offset = 1 * (scale * 2);
@@ -65,7 +67,9 @@ void nametags_render(void) {
 
     // sort nametags by their distance to the camera
     // insertion sort is quick enough for such small array
-    for (s32 i = gNametagsSettings.showSelfTag ? 0 : 1; i < MAX_PLAYERS; i++) {
+    // "self" is the player whose view is being drawn: other players on this PC get name tags too
+    for (s32 i = 0; i < MAX_PLAYERS; i++) {
+        if (!gNametagsSettings.showSelfTag && i == gCurrLocalPlayer) { continue; }
         struct MarioState* m = &gMarioStates[i];
         if (!is_player_active(m)) { continue; }
         struct NetworkPlayer* np = &gNetworkPlayers[i];
@@ -90,7 +94,7 @@ void nametags_render(void) {
         vec3f_copy(pos, m->marioBodyState->headPos);
         pos[1] += 100;
 
-        if ((i != 0 || (i == 0 && m->action != ACT_FIRST_PERSON)) &&
+        if ((i != gCurrLocalPlayer || m->action != ACT_FIRST_PERSON) &&
             djui_hud_world_pos_to_screen_pos(pos, out)) {
 
             char name[MAX_CONFIG_STRING];
@@ -163,7 +167,7 @@ void nametags_render(void) {
         f32 prevHalfHeight = height * e->prevScale * 0.5f;
         f32 prevNametagPosY = e->prevPos[1] - prevHalfHeight;
         const u8 *color = network_get_player_text_color(m->playerIndex);
-        u8 alpha = (playerIndex == 0 ? 255 : MIN(np->fadeOpacity << 3, 255)) * clamp(FADE_SCALE - nametag->scale, 0.f, 1.f);
+        u8 alpha = (is_local_player(playerIndex) ? 255 : MIN(np->fadeOpacity << 3, 255)) * clamp(FADE_SCALE - nametag->scale, 0.f, 1.f);
 
         // render name
         djui_hud_print_outlined_text_interpolated(nametag->name,
@@ -172,7 +176,7 @@ void nametags_render(void) {
             color[0], color[1], color[2], alpha, 0.25);
 
         // render power meter
-        if (playerIndex != 0 && gNametagsSettings.showHealth) {
+        if (playerIndex != gCurrLocalPlayer && gNametagsSettings.showHealth) {
             djui_hud_set_color(255, 255, 255, alpha);
             f32 currHealthSize = 90 * nametag->scale;
             f32 prevHealthSize = 90 * e->prevScale;
@@ -194,7 +198,9 @@ void nametags_render(void) {
 }
 
 void nametags_reset(void) {
-    for (u8 i = 0; i < MAX_PLAYERS; i++) {
-        sStateExtras[i].inited = false;
+    for (u8 v = 0; v < MAX_LOCAL_PLAYERS; v++) {
+        for (u8 i = 0; i < MAX_PLAYERS; i++) {
+            sStateExtrasByView[v][i].inited = false;
+        }
     }
 }

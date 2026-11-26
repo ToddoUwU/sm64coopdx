@@ -2115,6 +2115,11 @@ void gfx_set_view(uint8_t index, uint8_t count) {
     rdp.viewport_or_scissor_changed = true;
 }
 
+void gfx_get_view(uint8_t *index, uint8_t *count) {
+    *index = sViewIndex;
+    *count = sViewCount;
+}
+
 void gfx_get_dimensions(uint32_t *width, uint32_t *height) {
     // inside a split screen view, the view is the screen
     if (sViewCount > 1) {

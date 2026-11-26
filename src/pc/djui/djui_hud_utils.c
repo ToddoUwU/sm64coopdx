@@ -163,6 +163,9 @@ typedef struct {
 } InterpHudGfx;
 
 struct InterpHud {
+    // split screen view the element was drawn in (positions are relative to that view)
+    u8 view;
+    u8 viewCount;
     f32 z;
     InterpFieldF32 posX, posY;
     InterpFieldF32 scaleX, scaleY;
@@ -200,6 +203,7 @@ void patch_djui_hud(f32 delta) {
         f32 scaleH = delta_interpolate_f32(interp->scaleY.prev, interp->scaleY.curr, delta);
         sHudUtilsState = interp->state;
         gDjuiHudUtilsZ = interp->z;
+        gfx_set_view(interp->view, interp->viewCount);
 
         for (u32 j = 0; j != interp->gfx->count; ++j) {
             const InterpHudGfx *gfx = interp->gfx->buffer[j];
@@ -262,6 +266,7 @@ void patch_djui_hud(f32 delta) {
             }
         }
     }
+    gfx_set_view(0, 1);
 
     sHudUtilsState = savedState;
     gDisplayListHead = savedHeadPos;
@@ -276,6 +281,7 @@ static struct InterpHud *djui_hud_create_interp() {
     );
 
     if (interp) {
+        gfx_get_view(&interp->view, &interp->viewCount);
         interp->z = gDjuiHudUtilsZ;
         interp->state = sHudUtilsState;
         if (!interp->gfx) {
