@@ -1494,7 +1494,6 @@ s32 act_burning_ground(struct MarioState *m) {
 
     m->health -= 10;
     if (m->health < 0x100) {
-        extern struct MarioState gMarioStates[];
         if (mario_is_local(m)) {
             // never kill remote marios
             set_mario_action(m, ACT_STANDING_DEATH, 0);

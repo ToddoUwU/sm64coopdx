@@ -30,5 +30,11 @@ set -e
 
 grep -E "error:|Error [0-9]+" "$LOG" | head -40 || true
 tail -3 "$LOG"
+# an undeclared function silently returns int in C (truncating pointers): treat it as a failed build
+if grep -q "implicit declaration of function" "$LOG"; then
+    grep "implicit declaration of function" "$LOG" | sort -u
+    echo "build failed: implicit function declarations"
+    STATUS=1
+fi
 echo "build exit status: $STATUS"
 exit $STATUS
