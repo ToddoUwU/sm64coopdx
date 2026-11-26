@@ -10,6 +10,8 @@
 #include "buffers/zbuffer.h"
 #include "engine/level_script.h"
 #include "game_init.h"
+#include "local_players.h"
+#include "pc/controller/controller_sdl.h"
 #include "main.h"
 #include "memory.h"
 #include "profiler.h"
@@ -457,6 +459,21 @@ void run_demo_inputs(void) {
     }
 }
 
+// Split screen players 2-4 read their own gamepads into ports 2-4. While a menu has taken over the pad
+// (gInteractableOverridePad) their input goes to the menu too, so every player on this PC can use it.
+static void read_local_player_pads(void) {
+    for (u8 i = 1; i < ARRAY_COUNT(gControllerPads); i++) {
+        OSContPad *pad = &gControllerPads[i];
+        memset(pad, 0, sizeof(*pad));
+        if (i >= gLocalPlayerCount) {
+            gControllers[i].controllerData = NULL;
+            continue;
+        }
+        gControllers[i].controllerData = pad;
+        controller_sdl_read_local_player(i, gInteractableOverridePad ? &gInteractablePad : pad);
+    }
+}
+
 // update the controller struct with available inputs if present.
 void read_controller_inputs(void) {
     // If any controllers are plugged in, update the
@@ -464,10 +481,11 @@ void read_controller_inputs(void) {
     if (gControllerBits) {
         osRecvMesg(&gSIEventMesgQueue, &D_80339BEC, OS_MESG_BLOCK);
         osContGetReadData(gInteractableOverridePad ? &gInteractablePad : &gControllerPads[0]);
+        read_local_player_pads();
     }
     run_demo_inputs();
 
-    for (s32 i = 0; i < 1; i++) {
+    for (s32 i = 0; i < gLocalPlayerCount; i++) {
         struct Controller *controller = &gControllers[i];
 
         // if we're receiving inputs, update the controller struct

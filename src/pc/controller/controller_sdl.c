@@ -26,11 +26,13 @@
 #include "pc/djui/djui.h"
 #include "pc/djui/djui_panel_pause.h"
 #include "pc/djui/djui_hud_utils.h"
+#include "game/local_players.h"
 
 #define MAX_JOYBINDS 32
 #define MAX_MOUSEBUTTONS 8 // arbitrary
 #define MAX_JOYBUTTONS 32  // arbitrary; includes virtual keys for triggers
 #define AXIS_THRESHOLD (30 * 256)
+#define MAX_ASSIGNABLE_GAMEPADS 32 // SDL device indices considered when seating split screen players
 
 static bool init_ok = false;
 static bool haptics_enabled = false;
@@ -50,6 +52,16 @@ static bool joy_buttons[MAX_JOYBUTTONS] = { false };
 static u32 last_mouse = VK_INVALID;
 static u32 last_joybutton = VK_INVALID;
 static u32 last_gamepad = 0;
+
+// Gamepads of split screen players 2-4 (player 1 uses sdl_cntrl / sdl_joystick above).
+struct LocalPlayerPad {
+    SDL_GameController *cntrl;
+    SDL_Joystick *joystick;
+    SDL_Haptic *haptic;
+    int deviceIndex; // SDL device index the pad was opened from, -1 when none is open
+    bool buttons[MAX_JOYBUTTONS];
+};
+static struct LocalPlayerPad sLocalPads[MAX_LOCAL_PLAYERS] = { 0 };
 
 static s16 invert_s16(s16 val) {
     if (val == -0x8000) return 0x7FFF;
@@ -204,6 +216,103 @@ static inline void update_analog_stick(s8 *stick_x, s8 *stick_y,
     }
 }
 
+// Button state of player 1's pad (lp == NULL) or a split screen player's pad.
+static bool *pad_buttons(struct LocalPlayerPad *lp) {
+    return lp ? lp->buttons : joy_buttons;
+}
+
+static void update_pad_button(struct LocalPlayerPad *lp, const int i, const bool new) {
+    if (lp == NULL) { update_button(i, new); return; }
+    const bool pressed = !lp->buttons[i] && new;
+    const bool unpressed = lp->buttons[i] && !new;
+    lp->buttons[i] = new;
+    // every player on this PC can drive the shared menus
+    if (pressed) { djui_interactable_on_key_down(VK_BASE_SDL_GAMEPAD + i); }
+    if (unpressed) { djui_interactable_on_key_up(VK_BASE_SDL_GAMEPAD + i); }
+}
+
+// Reads an open gamepad (game controller or raw joystick) and adds its bound buttons and sticks to `pad`.
+// `buttons_down` carries buttons already pressed through other devices (player 1's mouse).
+static void read_gamepad_into(struct LocalPlayerPad *lp, SDL_GameController *cntrl, SDL_Joystick *joystick,
+                              OSContPad *pad, u32 buttons_down) {
+    int16_t leftx = 0, lefty = 0, rightx = 0, righty = 0;
+    int16_t ltrig = 0, rtrig = 0;
+    if (cntrl) {
+        leftx = SDL_GameControllerGetAxis(cntrl, SDL_CONTROLLER_AXIS_LEFTX);
+        lefty = SDL_GameControllerGetAxis(cntrl, SDL_CONTROLLER_AXIS_LEFTY);
+        rightx = SDL_GameControllerGetAxis(cntrl, SDL_CONTROLLER_AXIS_RIGHTX);
+        righty = SDL_GameControllerGetAxis(cntrl, SDL_CONTROLLER_AXIS_RIGHTY);
+        ltrig = SDL_GameControllerGetAxis(cntrl, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+        rtrig = SDL_GameControllerGetAxis(cntrl, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+        for (u32 i = 0; i < SDL_CONTROLLER_BUTTON_MAX; ++i) {
+            const bool new = SDL_GameControllerGetButton(cntrl, i);
+            update_pad_button(lp, i, new);
+        }
+    } else if (joystick) {
+        int axis_count = SDL_JoystickNumAxes(joystick);
+        if (axis_count >= 2) {
+            leftx = SDL_JoystickGetAxis(joystick, 0);
+            lefty = SDL_JoystickGetAxis(joystick, 1);
+        }
+        if (axis_count >= 4) {
+            rightx = SDL_JoystickGetAxis(joystick, 2);
+            righty = SDL_JoystickGetAxis(joystick, 5); // Specific to N64 controller
+        }
+        if (axis_count >= 6) {
+            ltrig = SDL_JoystickGetAxis(joystick, 3);
+            rtrig = SDL_JoystickGetAxis(joystick, 4);
+        }
+
+        int button_count = SDL_JoystickNumButtons(joystick);
+        for (int i = 0; i < button_count && i < MAX_JOYBUTTONS; ++i) {
+            update_pad_button(lp, i, SDL_JoystickGetButton(joystick, i));
+        }
+    }
+
+    if (configStick.rotateLeft) {
+        s16 tmp = leftx;
+        leftx = invert_s16(lefty);
+        lefty = tmp;
+    }
+    if (configStick.rotateRight) {
+        s16 tmp = rightx;
+        rightx = invert_s16(righty);
+        righty = tmp;
+    }
+    if (configStick.invertLeftX) { leftx = invert_s16(leftx); }
+    if (configStick.invertLeftY) { lefty = invert_s16(lefty); }
+    if (configStick.invertRightX) { rightx = invert_s16(rightx); }
+    if (configStick.invertRightY) { righty = invert_s16(righty); }
+
+    update_pad_button(lp, VK_LTRIGGER - VK_BASE_SDL_GAMEPAD, ltrig > AXIS_THRESHOLD);
+    update_pad_button(lp, VK_RTRIGGER - VK_BASE_SDL_GAMEPAD, rtrig > AXIS_THRESHOLD);
+
+    for (u32 i = 0; i < num_joy_binds; ++i)
+        if (pad_buttons(lp)[joy_binds[i][0]])
+            buttons_down |= joy_binds[i][1];
+
+    pad->button |= buttons_down;
+
+    const u32 xstick = buttons_down & STICK_XMASK;
+    const u32 ystick = buttons_down & STICK_YMASK;
+    if (xstick == STICK_LEFT)
+        pad->stick_x = -128;
+    else if (xstick == STICK_RIGHT)
+        pad->stick_x = 127;
+    if (ystick == STICK_DOWN)
+        pad->stick_y = -128;
+    else if (ystick == STICK_UP)
+        pad->stick_y = 127;
+
+    if (rightx < -0x4000) pad->button |= L_CBUTTONS;
+    if (rightx > 0x4000) pad->button |= R_CBUTTONS;
+    if (righty < -0x4000) pad->button |= U_CBUTTONS;
+    if (righty > 0x4000) pad->button |= D_CBUTTONS;
+
+    update_analog_stick(&pad->stick_x, &pad->stick_y, leftx, lefty);
+    update_analog_stick(&pad->ext_stick_x, &pad->ext_stick_y, rightx, righty);
+}
+
 extern s16 gMenuMode;
 static void controller_sdl_read(OSContPad *pad) {
     if (!init_ok) { return; }
@@ -267,82 +376,132 @@ static void controller_sdl_read(OSContPad *pad) {
         }
     }
 
-    int16_t leftx = 0, lefty = 0, rightx = 0, righty = 0;
-    int16_t ltrig = 0, rtrig = 0;
-    if (sdl_cntrl) {
-        leftx = SDL_GameControllerGetAxis(sdl_cntrl, SDL_CONTROLLER_AXIS_LEFTX);
-        lefty = SDL_GameControllerGetAxis(sdl_cntrl, SDL_CONTROLLER_AXIS_LEFTY);
-        rightx = SDL_GameControllerGetAxis(sdl_cntrl, SDL_CONTROLLER_AXIS_RIGHTX);
-        righty = SDL_GameControllerGetAxis(sdl_cntrl, SDL_CONTROLLER_AXIS_RIGHTY);
-        ltrig = SDL_GameControllerGetAxis(sdl_cntrl, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
-        rtrig = SDL_GameControllerGetAxis(sdl_cntrl, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
-        for (u32 i = 0; i < SDL_CONTROLLER_BUTTON_MAX; ++i) {
-            const bool new = SDL_GameControllerGetButton(sdl_cntrl, i);
-            update_button(i, new);
-        }
-    } else if (sdl_joystick) {
-        int axis_count = SDL_JoystickNumAxes(sdl_joystick);
-        if (axis_count >= 2) {
-            leftx = SDL_JoystickGetAxis(sdl_joystick, 0);
-            lefty = SDL_JoystickGetAxis(sdl_joystick, 1);
-        }
-        if (axis_count >= 4) {
-            rightx = SDL_JoystickGetAxis(sdl_joystick, 2);
-            righty = SDL_JoystickGetAxis(sdl_joystick, 5); // Specific to N64 controller
-        }
-        if (axis_count >= 6) {
-            ltrig = SDL_JoystickGetAxis(sdl_joystick, 3);
-            rtrig = SDL_JoystickGetAxis(sdl_joystick, 4);
-        }
+    read_gamepad_into(NULL, sdl_cntrl, sdl_joystick, pad, buttons_down);
+}
 
-        int button_count = SDL_JoystickNumButtons(sdl_joystick);
-        for (int i = 0; i < button_count && i < MAX_JOYBUTTONS; ++i) {
-            update_button(i, SDL_JoystickGetButton(sdl_joystick, i));
+static void local_pad_close(struct LocalPlayerPad *lp) {
+    if (lp->haptic) { SDL_HapticClose(lp->haptic); }
+    if (lp->cntrl) { SDL_GameControllerClose(lp->cntrl); }
+    if (lp->joystick) { SDL_JoystickClose(lp->joystick); }
+    lp->haptic = NULL;
+    lp->cntrl = NULL;
+    lp->joystick = NULL;
+    lp->deviceIndex = -1;
+    memset(lp->buttons, 0, sizeof(lp->buttons));
+}
+
+static bool local_pad_attached(const struct LocalPlayerPad *lp) {
+    if (lp->cntrl) { return SDL_GameControllerGetAttached(lp->cntrl); }
+    if (lp->joystick) { return SDL_JoystickGetAttached(lp->joystick); }
+    return false;
+}
+
+static void local_pad_open(struct LocalPlayerPad *lp, int deviceIndex) {
+    local_pad_close(lp);
+    if (deviceIndex < 0 || deviceIndex >= SDL_NumJoysticks()) { return; }
+    if (SDL_IsGameController(deviceIndex)) {
+        lp->cntrl = SDL_GameControllerOpen(deviceIndex);
+        if (lp->cntrl && haptics_enabled) {
+            lp->haptic = SDL_HapticOpenFromJoystick(SDL_GameControllerGetJoystick(lp->cntrl));
+            if (lp->haptic && (SDL_HapticRumbleSupported(lp->haptic) != SDL_TRUE || SDL_HapticRumbleInit(lp->haptic) != 0)) {
+                SDL_HapticClose(lp->haptic);
+                lp->haptic = NULL;
+            }
+        }
+    } else {
+        lp->joystick = SDL_JoystickOpen(deviceIndex);
+    }
+    if (lp->cntrl || lp->joystick) {
+        lp->deviceIndex = deviceIndex;
+        printf("split screen: player %d uses gamepad %d (%s)\n", (int)(lp - sLocalPads) + 1, deviceIndex,
+               SDL_JoystickNameForIndex(deviceIndex));
+    }
+}
+
+// SDL device index each local player should use this frame: player 1 keeps gamepad_number; players 2-4 use
+// splitscreen_gamepad_N when it is set (N = device index + 1), otherwise the next game controller nobody uses.
+static void resolve_local_pad_devices(int devices[MAX_LOCAL_PLAYERS]) {
+    int deviceCount = SDL_NumJoysticks();
+    bool taken[MAX_ASSIGNABLE_GAMEPADS] = { false };
+    devices[0] = (int) configGamepadNumber;
+    if (devices[0] >= 0 && devices[0] < MAX_ASSIGNABLE_GAMEPADS) { taken[devices[0]] = true; }
+
+    for (u8 i = 1; i < MAX_LOCAL_PLAYERS; i++) {
+        devices[i] = -1;
+        if (i >= gLocalPlayerCount || configSplitscreenGamepad[i] == 0) { continue; }
+        devices[i] = (int) configSplitscreenGamepad[i] - 1;
+        if (devices[i] < MAX_ASSIGNABLE_GAMEPADS) { taken[devices[i]] = true; }
+    }
+
+    for (u8 i = 1; i < gLocalPlayerCount; i++) {
+        if (configSplitscreenGamepad[i] != 0) { continue; }
+        for (int d = 0; d < deviceCount && d < MAX_ASSIGNABLE_GAMEPADS; d++) {
+            if (taken[d] || !SDL_IsGameController(d)) { continue; }
+            devices[i] = d;
+            taken[d] = true;
+            break;
+        }
+    }
+}
+
+void controller_sdl_read_local_player(u8 localIndex, OSContPad *pad) {
+    if (!init_ok || configDisableGamepads) { return; }
+    if (localIndex == 0 || localIndex >= MAX_LOCAL_PLAYERS) { return; }
+
+    // player 1's read (earlier in the same frame) already pumped SDL's controller state
+    int devices[MAX_LOCAL_PLAYERS];
+    resolve_local_pad_devices(devices);
+
+    // close pads of players that left, or whose device was unplugged or reassigned
+    for (u8 i = 1; i < MAX_LOCAL_PLAYERS; i++) {
+        struct LocalPlayerPad *lp = &sLocalPads[i];
+        bool open = lp->cntrl || lp->joystick;
+        if (open && (i >= gLocalPlayerCount || !local_pad_attached(lp) || lp->deviceIndex != devices[i])) {
+            local_pad_close(lp);
         }
     }
 
-    if (configStick.rotateLeft) {
-        s16 tmp = leftx;
-        leftx = invert_s16(lefty);
-        lefty = tmp;
+    struct LocalPlayerPad *lp = &sLocalPads[localIndex];
+    if (!lp->cntrl && !lp->joystick) {
+        local_pad_open(lp, devices[localIndex]);
+        if (!lp->cntrl && !lp->joystick) { return; }
     }
-    if (configStick.rotateRight) {
-        s16 tmp = rightx;
-        rightx = invert_s16(righty);
-        righty = tmp;
+    read_gamepad_into(lp, lp->cntrl, lp->joystick, pad, 0);
+}
+
+void controller_sdl_rumble_local_player(u8 localIndex, float strength, float length) {
+    if (localIndex == 0) {
+        controller_rumble_play(strength, length);
+        return;
     }
-    if (configStick.invertLeftX) { leftx = invert_s16(leftx); }
-    if (configStick.invertLeftY) { lefty = invert_s16(lefty); }
-    if (configStick.invertRightX) { rightx = invert_s16(rightx); }
-    if (configStick.invertRightY) { righty = invert_s16(righty); }
+    if (localIndex >= MAX_LOCAL_PLAYERS) { return; }
+    struct LocalPlayerPad *lp = &sLocalPads[localIndex];
+    if (lp->haptic) {
+        SDL_HapticRumblePlay(lp->haptic, strength, (u32)(length * 1000.0f));
+    }
+#if SDL_VERSION_ATLEAST(2,0,18)
+    else if (lp->cntrl && SDL_GameControllerHasRumble(lp->cntrl) == SDL_TRUE) {
+        uint16_t scaledStrength = strength * 65535.0f;
+        SDL_GameControllerRumble(lp->cntrl, scaledStrength, scaledStrength, (u32)(length * 1000.0f));
+    }
+#endif
+}
 
-    update_button(VK_LTRIGGER - VK_BASE_SDL_GAMEPAD, ltrig > AXIS_THRESHOLD);
-    update_button(VK_RTRIGGER - VK_BASE_SDL_GAMEPAD, rtrig > AXIS_THRESHOLD);
-
-    for (u32 i = 0; i < num_joy_binds; ++i)
-        if (joy_buttons[joy_binds[i][0]])
-            buttons_down |= joy_binds[i][1];
-
-    pad->button |= buttons_down;
-
-    const u32 xstick = buttons_down & STICK_XMASK;
-    const u32 ystick = buttons_down & STICK_YMASK;
-    if (xstick == STICK_LEFT)
-        pad->stick_x = -128;
-    else if (xstick == STICK_RIGHT)
-        pad->stick_x = 127;
-    if (ystick == STICK_DOWN)
-        pad->stick_y = -128;
-    else if (ystick == STICK_UP)
-        pad->stick_y = 127;
-
-    if (rightx < -0x4000) pad->button |= L_CBUTTONS;
-    if (rightx > 0x4000) pad->button |= R_CBUTTONS;
-    if (righty < -0x4000) pad->button |= U_CBUTTONS;
-    if (righty > 0x4000) pad->button |= D_CBUTTONS;
-
-    update_analog_stick(&pad->stick_x, &pad->stick_y, leftx, lefty);
-    update_analog_stick(&pad->ext_stick_x, &pad->ext_stick_y, rightx, righty);
+void controller_sdl_rumble_stop_local_player(u8 localIndex) {
+    if (localIndex == 0) {
+        controller_rumble_stop();
+        return;
+    }
+    if (localIndex >= MAX_LOCAL_PLAYERS) { return; }
+    struct LocalPlayerPad *lp = &sLocalPads[localIndex];
+    if (lp->haptic) {
+        SDL_HapticRumbleStop(lp->haptic);
+    }
+#if SDL_VERSION_ATLEAST(2,0,18)
+    else if (lp->cntrl && SDL_GameControllerHasRumble(lp->cntrl) == SDL_TRUE) {
+        SDL_GameControllerRumble(lp->cntrl, 0, 0, 0);
+    }
+#endif
 }
 
 static void controller_sdl_rumble_play(f32 strength, f32 length) {
@@ -388,6 +547,7 @@ static u32 controller_sdl_rawkey(void) {
 }
 
 static void controller_sdl_shutdown(void) {
+    for (u8 i = 1; i < MAX_LOCAL_PLAYERS; i++) { local_pad_close(&sLocalPads[i]); }
     if (SDL_WasInit(SDL_INIT_GAMECONTROLLER)) {
         if (sdl_cntrl) {
             SDL_GameControllerClose(sdl_cntrl);

@@ -13,4 +13,11 @@
 
 extern struct ControllerAPI controller_sdl;
 
+// Split screen: reads the gamepad of local player `localIndex` (1-3) into `pad` (OR-ed in, not cleared).
+// Players 2-4 only use gamepads; the keyboard and mouse belong to player 1.
+void controller_sdl_read_local_player(u8 localIndex, OSContPad *pad);
+// Rumbles the gamepad of local player `localIndex` (0 = player 1's gamepad).
+void controller_sdl_rumble_local_player(u8 localIndex, float strength, float length);
+void controller_sdl_rumble_stop_local_player(u8 localIndex);
+
 #endif
