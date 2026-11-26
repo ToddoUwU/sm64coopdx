@@ -216,6 +216,10 @@ struct GraphNodeObject
     u32 prevScaleTimestamp;
     u32 prevThrowMatrixTimestamp;
     u32 skipInterpolationTimestamp;
+    // last game tick in which any split screen view drew this object (its interpolation history stays valid)
+    u32 drawnInViewTimestamp;
+    // tick in which cameraToObject was last chosen (split screen keeps the nearest view's camera)
+    u32 cameraToObjectTimestamp;
 
     struct AnimInfo animInfo;
 

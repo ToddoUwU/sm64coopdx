@@ -1747,9 +1747,16 @@ static void geo_process_object(struct Object *node) {
                          scalePrev);
         node->header.gfx.throwMatrix = &gMatStack[++gMatStackIndex];
         node->header.gfx.throwMatrixPrev = &gMatStackPrev[gMatStackIndex];
-        node->header.gfx.cameraToObject[0] = gMatStack[gMatStackIndex][3][0];
-        node->header.gfx.cameraToObject[1] = gMatStack[gMatStackIndex][3][1];
-        node->header.gfx.cameraToObject[2] = gMatStack[gMatStackIndex][3][2];
+        // Sounds are positioned by cameraToObject. With split screen every view offers its camera-space
+        // position and the nearest camera wins for this tick, so each sound is heard from the closest player.
+        f32 *viewToObject = gMatStack[gMatStackIndex][3];
+        bool firstViewThisTick = node->header.gfx.cameraToObjectTimestamp != gGlobalTimer;
+        if (firstViewThisTick || vec3f_length(viewToObject) < vec3f_length(node->header.gfx.cameraToObject)) {
+            node->header.gfx.cameraToObject[0] = viewToObject[0];
+            node->header.gfx.cameraToObject[1] = viewToObject[1];
+            node->header.gfx.cameraToObject[2] = viewToObject[2];
+            node->header.gfx.cameraToObjectTimestamp = gGlobalTimer;
+        }
 
         // FIXME: correct types
         if (node->header.gfx.animInfo.curAnim != NULL) {
@@ -1759,6 +1766,7 @@ static void geo_process_object(struct Object *node) {
             dynos_gfx_swap_animations(node);
         }
         if (obj_is_in_view(&node->header.gfx, gMatStack[gMatStackIndex])) {
+            node->header.gfx.drawnInViewTimestamp = gGlobalTimer;
             Mtx *mtx = alloc_display_list(sizeof(*mtx));
             Mtx *mtxPrev = alloc_display_list(sizeof(*mtxPrev));
             if (mtx == NULL || mtxPrev == NULL) { return; }
@@ -1786,7 +1794,8 @@ static void geo_process_object(struct Object *node) {
                 geo_process_node_and_siblings(node->header.gfx.node.children);
             }
 
-        } else {
+        } else if (sInterpCommit && node->header.gfx.drawnInViewTimestamp != gGlobalTimer) {
+            // culled in every view this tick
             node->header.gfx.prevThrowMatrixTimestamp = 0;
             node->header.gfx.prevTimestamp = 0;
             node->header.gfx.prevScaleTimestamp = 0;
