@@ -3307,7 +3307,7 @@ s32 cur_obj_can_mario_activate_textbox_2(struct MarioState* m, f32 radius, f32 h
 /* |description|Ends dialog state for the current object and records Mario's response|descriptionEnd| */
 void cur_obj_end_dialog(struct MarioState* m, s32 dialogFlags, s32 dialogResult) {
     if (!o || !m) { return; }
-    if (m->playerIndex != 0) { return; }
+    if (!is_local_player(m->playerIndex)) { return; }
 
     o->oDialogResponse = dialogResult;
     o->oDialogState++;
@@ -3323,7 +3323,7 @@ s32 cur_obj_update_dialog(struct MarioState* m, s32 actionArg, s32 dialogFlags, 
     s32 dialogResponse = 0;
     UNUSED s32 doneTurning = TRUE;
 
-    if (m->playerIndex != 0) { return 0; }
+    if (!is_local_player(m->playerIndex)) { return 0; }
 
     switch (o->oDialogState) {
 #ifdef VERSION_JP
@@ -3404,7 +3404,7 @@ s32 cur_obj_update_dialog_with_cutscene(struct MarioState* m, s32 actionArg, s32
     s32 dialogResponse = 0;
     s32 doneTurning = TRUE;
 
-    if (m->playerIndex != 0) { return 0; }
+    if (!is_local_player(m->playerIndex)) { return 0; }
     if (!m->visibleToObjects) { return FALSE; }
 
     switch (o->oDialogState) {

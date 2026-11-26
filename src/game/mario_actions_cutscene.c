@@ -398,7 +398,7 @@ Checks if the dialog from a specified `object` should start or continue for this
 u8 should_start_or_continue_dialog(struct MarioState* m, struct Object* object) {
     if (!m) { return FALSE; }
     if (!m->visibleToObjects) { return FALSE; }
-    if (m->playerIndex == 0) { return TRUE; }
+    if (is_local_player(m->playerIndex)) { return TRUE; }
     return (gContinueDialogFunctionObject == object);
 }
 
@@ -413,7 +413,7 @@ s32 set_mario_npc_dialog(struct MarioState* m, s32 actionArg, u8 (*inContinueDia
 
     s32 dialogState = 0;
 
-    if (m->playerIndex == 0) {
+    if (is_local_player(m->playerIndex)) {
         if (actionArg == 0 || inContinueDialogFunction == NULL) {
             localDialogNPCBehavior = NULL;
             gContinueDialogFunction = NULL;
@@ -439,7 +439,7 @@ s32 set_mario_npc_dialog(struct MarioState* m, s32 actionArg, u8 (*inContinueDia
     } else if (actionArg != 0 && mario_ready_to_speak(m)) {
         m->usedObj = gCurrentObject;
         set_mario_action(m, ACT_READING_NPC_DIALOG, actionArg);
-        if (m->playerIndex == 0 && m->usedObj != NULL) { localDialogNPCBehavior = (BehaviorScript*)m->usedObj->behavior; }
+        if (is_local_player(m->playerIndex) && m->usedObj != NULL) { localDialogNPCBehavior = (BehaviorScript*)m->usedObj->behavior; }
         dialogState = 1; // starting dialog
     }
 
@@ -460,7 +460,7 @@ s32 act_reading_npc_dialog(struct MarioState *m) {
     s32 headTurnAmount = 0;
     s16 angleToNPC;
 
-    if (m->playerIndex == 0) {
+    if (is_local_player(m->playerIndex)) {
         u8 continueDialogCallback = TRUE;
         if (gContinueDialogFunction != NULL && gContinueDialogFunctionObject != NULL) {
             struct Object* tmp = gCurrentObject;
@@ -495,7 +495,7 @@ s32 act_reading_npc_dialog(struct MarioState *m) {
     } else if (m->actionState >= 9 && m->actionState < 17) {
         // look back from facing NPC
         m->actionTimer -= headTurnAmount;
-    } else if (m->playerIndex == 0 && m->actionState == 23) {
+    } else if (is_local_player(m->playerIndex) && m->actionState == 23) {
         if (m->flags & MARIO_CAP_IN_HAND) {
             set_mario_action(m, ACT_PUTTING_ON_CAP, 0);
         } else {
@@ -506,11 +506,11 @@ s32 act_reading_npc_dialog(struct MarioState *m) {
     vec3s_set(m->marioObj->header.gfx.angle, 0, m->faceAngle[1], 0);
     vec3s_set(m->marioBodyState->headAngle, m->actionTimer, 0, 0);
 
-    if (m->playerIndex == 0 && m->actionState != 8) {
+    if (is_local_player(m->playerIndex) && m->actionState != 8) {
         m->actionState++;
     }
 
-    if (m->playerIndex != 0 && gCurrentObject->header.gfx.animInfo.animID == -1) {
+    if (!is_local_player(m->playerIndex) && gCurrentObject->header.gfx.animInfo.animID == -1) {
         // set animation
         set_character_animation(m, m->heldObj == NULL ? CHAR_ANIM_FIRST_PERSON
             : CHAR_ANIM_IDLE_WITH_LIGHT_OBJ);
@@ -559,7 +559,7 @@ s32 act_reading_automatic_dialog(struct MarioState *m) {
         // set Mario dialog
         if (m->actionState == 9) {
             // only show dialog for local player
-            if (m->playerIndex == 0) {
+            if (is_local_player(m->playerIndex)) {
                 u32 actionArg = m->actionArg;
                 if (GET_HIGH_U16_OF_32(actionArg) == 0) {
                     create_dialog_box(GET_LOW_U16_OF_32(actionArg));
@@ -568,8 +568,8 @@ s32 act_reading_automatic_dialog(struct MarioState *m) {
                 }
             }
         } else if (m->actionState == 10) { // wait until dialog is done
-            if ((m->playerIndex == 0 && get_dialog_id() != DIALOG_NONE) ||
-                (m->playerIndex != 0 && m->dialogId != 0)) {
+            if ((is_local_player(m->playerIndex) && get_dialog_id() != DIALOG_NONE) ||
+                (!is_local_player(m->playerIndex) && m->dialogId != 0)) {
                 m->actionState--;
             }
         } else if (m->actionState < 19) { // wait until dialog is done
@@ -601,7 +601,7 @@ s32 act_reading_sign(struct MarioState *m) {
 
     // If anybody but us is reading a sign,
     // Don't handle their action state.
-    if (m->playerIndex != 0) {
+    if (!is_local_player(m->playerIndex)) {
         set_character_animation(m, CHAR_ANIM_FIRST_PERSON);
         return FALSE;
     }
@@ -611,7 +611,7 @@ s32 act_reading_sign(struct MarioState *m) {
     switch (m->actionState) {
         // start dialog
         case 0:
-            if (m == &gMarioStates[0]) {
+            if (mario_is_local(m)) {
                 trigger_cutscene_dialog(1);
             }
             enable_time_stop_if_alone();
@@ -626,7 +626,7 @@ s32 act_reading_sign(struct MarioState *m) {
             m->pos[2] += marioObj->oMarioReadingSignDPosZ / 11.0f;
             // create the text box
             if (m->actionTimer++ == 10) {
-                if (m == &gMarioStates[0] && m->usedObj != NULL) {
+                if (mario_is_local(m) && m->usedObj != NULL) {
                     create_dialog_inverted_box(m->usedObj->oBehParams2ndByte);
                 }
                 m->actionState = 2;
@@ -724,7 +724,7 @@ void general_star_dance_handler(struct MarioState *m, s32 isInWater) {
                         celebStar->header.gfx.node.flags |= GRAPH_RENDER_INVISIBLE;
                     }
                 }
-                if (m->playerIndex == 0) {
+                if (is_local_player(m->playerIndex)) {
                     disable_background_sound();
                 }
                 if (m->actionArg & 1) {
@@ -745,7 +745,7 @@ void general_star_dance_handler(struct MarioState *m, s32 isInWater) {
             case 80:
                 if ((m->actionArg & 1) == 0) {
                     level_trigger_warp(m, WARP_OP_STAR_EXIT);
-                } else if (m->playerIndex == 0) {
+                } else if (is_local_player(m->playerIndex)) {
                     if (gBehaviorValues.ShowStarDialog) {
                         enable_time_stop_if_alone();
                         create_dialog_box_with_response((gLastCompletedStarNum == 7)
@@ -760,7 +760,7 @@ void general_star_dance_handler(struct MarioState *m, s32 isInWater) {
                 }
                 break;
         }
-    } else if (m->playerIndex != 0) {
+    } else if (!is_local_player(m->playerIndex)) {
         // nothing
     } else if (m->actionState == 1 && gDialogResponse) {
         if (gDialogResponse == 1) {
@@ -786,7 +786,7 @@ void general_star_dance_handler(struct MarioState *m, s32 isInWater) {
 
 s32 act_star_dance(struct MarioState *m) {
     if (!m) { return 0; }
-    if (m == &gMarioStates[0]) {
+    if (mario_is_local(m)) {
         m->faceAngle[1] = mario_area_camera(m)->yaw;
     }
     set_character_animation(m, m->actionState == 2 ? CHAR_ANIM_RETURN_FROM_STAR_DANCE : CHAR_ANIM_STAR_DANCE);
@@ -800,7 +800,7 @@ s32 act_star_dance(struct MarioState *m) {
 
 s32 act_star_dance_water(struct MarioState *m) {
     if (!m) { return 0; }
-    if (m == &gMarioStates[0]) {
+    if (mario_is_local(m)) {
         m->faceAngle[1] = mario_area_camera(m)->yaw;
     }
     set_character_animation(m, m->actionState == 2 ? CHAR_ANIM_RETURN_FROM_WATER_STAR_DANCE : CHAR_ANIM_WATER_STAR_DANCE);
@@ -835,7 +835,7 @@ s32 common_death_handler(struct MarioState *m, s32 animation, s32 frameToDeathWa
     if (!m) { return 0; }
     s32 animFrame = set_character_animation(m, animation);
     if (animFrame == frameToDeathWarp) {
-        if (m->playerIndex != 0) {
+        if (!is_local_player(m->playerIndex)) {
             // do nothing
         } else {
             bool allowDeath = true;
@@ -908,7 +908,7 @@ s32 act_quicksand_death(struct MarioState *m) {
             play_character_sound_if_no_flag(m, CHAR_SOUND_WAAAOOOW, MARIO_MARIO_SOUND_PLAYED);
         }
         if ((m->quicksandDepth += 5.0f) >= 180.0f) {
-            if (m->playerIndex != 0) {
+            if (!is_local_player(m->playerIndex)) {
                 // do nothing
             } else {
                 m->actionState = 2;
@@ -934,7 +934,7 @@ s32 act_eaten_by_bubba(struct MarioState *m) {
     set_character_animation(m, CHAR_ANIM_A_POSE);
     m->marioObj->header.gfx.node.flags &= ~GRAPH_RENDER_ACTIVE;
     if (m->actionTimer++ == 60) {
-        if (m->playerIndex == 0) {
+        if (is_local_player(m->playerIndex)) {
             bool allowDeath = true;
             smlua_call_event_hooks(HOOK_ON_DEATH, m, &allowDeath);
             if (!allowDeath) { return FALSE; }
@@ -980,7 +980,7 @@ s32 act_unlocking_key_door(struct MarioState *m) {
         m->faceAngle[1] += 0x8000;
     }
 
-    if ((m->actionTimer == 0) || (m->playerIndex != 0 && gCurrentObject && gCurrentObject->header.gfx.animInfo.animID == -1)) {
+    if ((m->actionTimer == 0) || (!is_local_player(m->playerIndex) && gCurrentObject && gCurrentObject->header.gfx.animInfo.animID == -1)) {
         spawn_obj_at_mario_rel_yaw(m, MODEL_BOWSER_KEY_CUTSCENE, bhvBowserKeyUnlockDoor, 0);
         set_character_animation(m, CHAR_ANIM_UNLOCK_DOOR);
     }
@@ -1026,14 +1026,14 @@ s32 act_unlocking_star_door(struct MarioState *m) {
             m->marioObj->oMarioReadingSignDPosX = m->pos[0];
             m->marioObj->oMarioReadingSignDPosZ = m->pos[2];
             set_character_animation(m, CHAR_ANIM_SUMMON_STAR);
-            if (m->playerIndex != 0) { allowRemoteStarSpawn = TRUE; }
+            if (!is_local_player(m->playerIndex)) { allowRemoteStarSpawn = TRUE; }
             m->actionState++;
             break;
         case 1:
             set_character_animation(m, CHAR_ANIM_SUMMON_STAR);
             if (is_anim_at_end(m)) {
-                if (m->playerIndex == 0 || allowRemoteStarSpawn) {
-                    if (m->playerIndex != 0) { allowRemoteStarSpawn = FALSE; }
+                if (is_local_player(m->playerIndex) || allowRemoteStarSpawn) {
+                    if (!is_local_player(m->playerIndex)) { allowRemoteStarSpawn = FALSE; }
                     spawn_object(m->marioObj, MODEL_STAR, bhvUnlockDoorStar);
                 }
                 m->actionState++;
@@ -1047,7 +1047,7 @@ s32 act_unlocking_star_door(struct MarioState *m) {
             break;
         case 3:
             set_character_animation(m, CHAR_ANIM_RETURN_STAR_APPROACH_DOOR);
-            if (m->playerIndex != 0) { allowRemoteStarSpawn = TRUE; }
+            if (!is_local_player(m->playerIndex)) { allowRemoteStarSpawn = TRUE; }
             if (is_anim_at_end(m)) {
                 save_file_set_flags(get_door_save_file_flag(m->usedObj));
                 set_mario_action(m, ACT_READING_AUTOMATIC_DIALOG, gBehaviorValues.dialogs.StarDoorDialog);
@@ -1191,7 +1191,7 @@ s32 act_warp_door_spawn(struct MarioState *m) {
             }
         }
     } else if (m->usedObj == NULL || (m->usedObj->oAction == 0 || m->usedObj->oAction == 100)) {
-        if (m->playerIndex == 0) {
+        if (is_local_player(m->playerIndex)) {
             if (gNeverEnteredCastle && gCurrLevelNum == LEVEL_CASTLE) {
                 set_mario_action(m, ACT_READING_AUTOMATIC_DIALOG, gBehaviorValues.dialogs.CastleEnterDialog);
             } else {
@@ -1268,7 +1268,7 @@ s32 act_spawn_spin_airborne(struct MarioState *m) {
     if (!m) { return 0; }
     // entered water, exit action
     if (m->pos[1] < m->waterLevel - 100) {
-        if (m == &gMarioStates[0]) {
+        if (mario_is_local(m)) {
             load_level_init_text(0);
         }
         return set_water_plunge_action(m);
@@ -1300,7 +1300,7 @@ s32 act_spawn_spin_landing(struct MarioState *m) {
     stop_and_set_height_to_floor(m);
     set_character_animation(m, CHAR_ANIM_GENERAL_LAND);
     if (is_anim_at_end(m)) {
-        if (m == &gMarioStates[0]) {
+        if (mario_is_local(m)) {
             load_level_init_text(0);
         }
         set_mario_action(m, ACT_IDLE, 0);
@@ -1353,7 +1353,7 @@ s32 act_exit_land_save_dialog(struct MarioState *m) {
         case 0:
             set_character_animation(m, m->actionArg == 0 ? CHAR_ANIM_GENERAL_LAND : CHAR_ANIM_LAND_FROM_SINGLE_JUMP);
             // only allow for local player
-            if (m == &gMarioStates[0] && is_anim_past_end(m)) {
+            if (mario_is_local(m) && is_anim_past_end(m)) {
                 if (gLastCompletedCourseNum != COURSE_BITDW && gLastCompletedCourseNum != COURSE_BITFS) {
                     enable_time_stop_if_alone();
                 }
@@ -1389,7 +1389,7 @@ s32 act_exit_land_save_dialog(struct MarioState *m) {
                     // no break
             }
             // only allow for local player
-            if (m == &gMarioStates[0]) { handle_save_menu(m); }
+            if (mario_is_local(m)) { handle_save_menu(m); }
             break;
         // exit without cap
         case 2:
@@ -1402,7 +1402,7 @@ s32 act_exit_land_save_dialog(struct MarioState *m) {
             }
 
             // only allow for local player
-            if (m == &gMarioStates[0]) { handle_save_menu(m); }
+            if (mario_is_local(m)) { handle_save_menu(m); }
             break;
         // exit with cap
         case 3:
@@ -1421,7 +1421,7 @@ s32 act_exit_land_save_dialog(struct MarioState *m) {
                     break;
             }
             // only allow for local player
-            if (m == &gMarioStates[0]) { handle_save_menu(m); }
+            if (mario_is_local(m)) { handle_save_menu(m); }
             break;
     }
 
@@ -1552,7 +1552,7 @@ s32 act_spawn_no_spin_landing(struct MarioState *m) {
     set_character_animation(m, CHAR_ANIM_GENERAL_LAND);
     stop_and_set_height_to_floor(m);
     if (is_anim_at_end(m)) {
-        if (m == &gMarioStates[0]) {
+        if (mario_is_local(m)) {
             load_level_init_text(0);
         }
         set_mario_action(m, ACT_IDLE, 0);
@@ -1686,7 +1686,7 @@ s32 act_teleport_fade_out(struct MarioState *m) {
 
     if (m->actionTimer == 0) {
         queue_rumble_data_mario(m, 30, 70);
-        if (m->playerIndex == 0) {
+        if (is_local_player(m->playerIndex)) {
             func_sh_8024C89C(2);
         }
     }
@@ -1698,7 +1698,7 @@ s32 act_teleport_fade_out(struct MarioState *m) {
     }
 
     if (m->actionTimer++ == 20) {
-        if (m == &gMarioStates[0]) {
+        if (mario_is_local(m)) {
             // only do for local player
             level_trigger_warp(m, WARP_OP_TELEPORT);
         }
@@ -1716,7 +1716,7 @@ s32 act_teleport_fade_in(struct MarioState *m) {
 
     if (m->actionTimer == 0) {
         queue_rumble_data_mario(m, 30, 70);
-        if (m->playerIndex == 0) {
+        if (is_local_player(m->playerIndex)) {
             func_sh_8024C89C(2);
         }
     }
@@ -1731,7 +1731,7 @@ s32 act_teleport_fade_in(struct MarioState *m) {
     if (m->actionTimer++ == 32) {
         if (m->pos[1] < m->waterLevel - 100) {
             // Check if the camera is not underwater.
-            if (m->playerIndex == 0 && mario_area_camera(m)->mode != CAMERA_MODE_WATER_SURFACE) {
+            if (is_local_player(m->playerIndex) && mario_area_camera(m)->mode != CAMERA_MODE_WATER_SURFACE) {
                 set_camera_mode(mario_area_camera(m), CAMERA_MODE_WATER_SURFACE, 1);
             }
             set_mario_action(m, ACT_WATER_IDLE, 0);
@@ -1749,7 +1749,7 @@ s32 act_shocked(struct MarioState *m) {
     if (!m) { return 0; }
     play_character_sound_if_no_flag(m, CHAR_SOUND_WAAAOOOW, MARIO_MARIO_SOUND_PLAYED);
     play_sound(SOUND_MOVING_SHOCKED, m->marioObj->header.gfx.cameraToObject);
-    if (m->playerIndex == 0) { set_camera_shake_from_hit(SHAKE_SHOCK); }
+    if (is_local_player(m->playerIndex)) { set_camera_shake_from_hit(SHAKE_SHOCK); }
 
     if (set_character_animation(m, CHAR_ANIM_SHOCKED) == 0) {
         m->actionTimer++;
@@ -1789,7 +1789,7 @@ s32 act_squished(struct MarioState *m) {
             if (spaceUnderCeil > 160.0f) {
                 m->squishTimer = 0;
                 // prevent infinite loop for remote players
-                if (m == &gMarioStates[0]) {
+                if (mario_is_local(m)) {
                     return set_mario_action(m, ACT_IDLE, 0);
                 } else {
                     set_mario_action(m, ACT_IDLE, 0);
@@ -1874,7 +1874,7 @@ s32 act_squished(struct MarioState *m) {
 
     // squished for more than 10 seconds, so kill Mario
     if (m->actionArg++ > 300) {
-        if (m->playerIndex != 0) {
+        if (!is_local_player(m->playerIndex)) {
             // never kill remote marios
             m->health = 0x100;
         } else {
@@ -2133,7 +2133,7 @@ static void intro_cutscene_lower_pipe(struct MarioState *m) {
 static void intro_cutscene_set_mario_to_idle(struct MarioState *m) {
     if (!m || !gCamera) { return; }
     if (gCamera->cutscene == 0) {
-        if (m->playerIndex == 0) {
+        if (is_local_player(m->playerIndex)) {
             gCameraMovementFlags &= ~CAM_MOVE_C_UP_MODE;
         }
         set_mario_action(m, ACT_IDLE, 0);
@@ -2315,7 +2315,7 @@ static s32 jumbo_star_cutscene_flying(struct MarioState *m) {
     vec3f_copy(m->marioObj->header.gfx.pos, m->pos);
     set_mario_particle_flags(m, PARTICLE_SPARKLES, FALSE);
 
-    if (m->actionTimer++ == 500 && m->playerIndex == 0) {
+    if (m->actionTimer++ == 500 && is_local_player(m->playerIndex)) {
         level_trigger_warp(m, WARP_OP_CREDITS_START);
     }
 
@@ -2410,7 +2410,7 @@ static void end_peach_cutscene_mario_landing(struct MarioState *m) {
         // make wing cap run out
         m->capTimer = 60;
 
-        if (m->playerIndex == 0) {
+        if (is_local_player(m->playerIndex)) {
             sEndJumboStarObj = spawn_object_abs_with_rot(gCurrentObject, 0, MODEL_STAR, bhvStaticObject, 0,
                                                          2528, -1800, 0, 0, 0);
             if (sEndJumboStarObj != NULL) {
@@ -2426,7 +2426,7 @@ static void end_peach_cutscene_summon_jumbo_star(struct MarioState *m) {
     if (!m) { return; }
     set_character_animation(m, m->actionState == 0 ? CHAR_ANIM_CREDITS_RAISE_HAND
                                                : CHAR_ANIM_CREDITS_LOWER_HAND);
-    if (m->playerIndex != 0) { return; }
+    if (!is_local_player(m->playerIndex)) { return; }
     if (m->actionState == 0 && is_anim_past_end(m)) {
         m->actionState++;
     }
@@ -2460,7 +2460,7 @@ static void end_peach_cutscene_summon_jumbo_star(struct MarioState *m) {
 // free peach from the stained glass window
 static void end_peach_cutscene_spawn_peach(struct MarioState *m) {
     if (!m) { return; }
-    if (m->playerIndex != 0) { return; }
+    if (!is_local_player(m->playerIndex)) { return; }
     if (m->actionTimer == 1) {
         play_transition(WARP_TRANSITION_FADE_INTO_COLOR, 14, 255, 255, 255);
     }
@@ -2520,7 +2520,7 @@ static void end_peach_cutscene_spawn_peach(struct MarioState *m) {
 // descend peach
 static void end_peach_cutscene_descend_peach(struct MarioState *m) {
     if (!m) { return; }
-    if (m->playerIndex != 0) { return; }
+    if (!is_local_player(m->playerIndex)) { return; }
     generate_yellow_sparkles(0, sEndPeachObj->oPosY, -1300, 150.0f);
 
     if (sEndPeachObj->oPosY >= 1300.0f) {
@@ -2588,7 +2588,7 @@ static void end_peach_cutscene_dialog_1(struct MarioState *m) {
         }
     }
 
-    if (m->playerIndex != 0) { return; }
+    if (!is_local_player(m->playerIndex)) { return; }
 
     switch (m->actionTimer) {
 #ifdef VERSION_SH
@@ -2685,7 +2685,7 @@ static void end_peach_cutscene_dialog_1(struct MarioState *m) {
 // "We have to do something special for you..."
 static void end_peach_cutscene_dialog_2(struct MarioState *m) {
     if (!m) { return; }
-    if (m->playerIndex != 0) { return; }
+    if (!is_local_player(m->playerIndex)) { return; }
     sEndPeachAnimation = 9;
 
     switch (m->actionTimer) {
@@ -2796,7 +2796,7 @@ static void end_peach_cutscene_star_dance(struct MarioState *m) {
     if (animFrame == (nonMario ? 0 : 77)) {
         cutscene_put_cap_on(m);
     }
-    if (animFrame == 88 && m->playerIndex == 0) {
+    if (animFrame == 88 && is_local_player(m->playerIndex)) {
         play_character_sound(m, CHAR_SOUND_HERE_WE_GO);
     }
     if (!nonMario && animFrame >= 98) {
@@ -2825,7 +2825,7 @@ static void end_peach_cutscene_star_dance(struct MarioState *m) {
             break;
 
         case 140:
-            if (m->playerIndex == 0) {
+            if (is_local_player(m->playerIndex)) {
 #ifndef VERSION_JP
                 seq_player_unlower_volume(SEQ_PLAYER_LEVEL, 60);
 #endif
@@ -2847,7 +2847,7 @@ static void end_peach_cutscene_dialog_3(struct MarioState *m) {
     if (!m) { return; }
     u8 nonMario = (gNetworkPlayers[m->playerIndex].globalIndex != 0);
     set_character_animation(m, nonMario ? CHAR_ANIM_SLEEP_IDLE : CHAR_ANIM_FIRST_PERSON);
-    if (m->playerIndex != 0) { return; }
+    if (!is_local_player(m->playerIndex)) { return; }
     sEndPeachObj->oPosY = end_obj_set_visual_pos(sEndPeachObj);
     sEndRightToadObj->oPosY = end_obj_set_visual_pos(sEndRightToadObj);
     sEndLeftToadObj->oPosY = end_obj_set_visual_pos(sEndLeftToadObj);
@@ -2898,7 +2898,7 @@ static void end_peach_cutscene_run_to_castle(struct MarioState *m) {
         m->actionState = 1;
     }
 
-    if (m->actionTimer == 95 && m->playerIndex == 0) {
+    if (m->actionTimer == 95 && is_local_player(m->playerIndex)) {
         set_cutscene_message(160, 227, 0, 40);
 #ifndef VERSION_JP
         play_sound(SOUND_PEACH_MARIO2, sEndPeachObj->header.gfx.cameraToObject);
@@ -2911,7 +2911,7 @@ static void end_peach_cutscene_run_to_castle(struct MarioState *m) {
 
 static void end_peach_cutscene_fade_out(struct MarioState *m) {
     if (!m) { return; }
-    if (m->actionState == 0 && m->playerIndex == 0) {
+    if (m->actionState == 0 && is_local_player(m->playerIndex)) {
         level_trigger_warp(m, WARP_OP_CREDITS_NEXT);
         gPaintingMarioYEntry = 1500.0f; // ensure medium water level in WDW credits cutscene
         m->actionState = 1;
@@ -2980,7 +2980,7 @@ static s32 act_end_peach_cutscene(struct MarioState *m) {
 
     m->actionTimer++;
 
-    if (m->playerIndex == 0) {
+    if (is_local_player(m->playerIndex)) {
         if (m->controller->buttonPressed & START_BUTTON) {
             lvl_skip_credits();
         }
@@ -3017,7 +3017,7 @@ static s32 act_credits_cutscene(struct MarioState *m) {
     m->statusForCamera->cameraEvent = CAM_EVENT_START_CREDITS;
     // checks if Mario is underwater (JRB, DDD, SA, etc.)
     if (m->pos[1] < m->waterLevel - 100) {
-        if (m->playerIndex == 0 && mario_area_camera(m)->mode != CAMERA_MODE_BEHIND_MARIO) {
+        if (is_local_player(m->playerIndex) && mario_area_camera(m)->mode != CAMERA_MODE_BEHIND_MARIO) {
             set_camera_mode(mario_area_camera(m), CAMERA_MODE_BEHIND_MARIO, 1);
         }
         set_character_animation(m, CHAR_ANIM_WATER_IDLE);
@@ -3032,7 +3032,7 @@ static s32 act_credits_cutscene(struct MarioState *m) {
         }
     }
 
-    if (m->playerIndex == 0 && m->controller->buttonPressed & START_BUTTON) {
+    if (is_local_player(m->playerIndex) && m->controller->buttonPressed & START_BUTTON) {
         lvl_skip_credits();
     }
 
@@ -3042,7 +3042,7 @@ static s32 act_credits_cutscene(struct MarioState *m) {
         }
 
         if (gCurrCreditsEntry != NULL && !gDjuiInMainMenu) {
-            if (m->playerIndex == 0) {
+            if (is_local_player(m->playerIndex)) {
                 s32 width = m->actionState * 640 / 100;
                 s32 height = m->actionState * 480 / 100;
 
@@ -3057,15 +3057,15 @@ static s32 act_credits_cutscene(struct MarioState *m) {
     }
 
     if (gCurrCreditsEntry != NULL) {
-        if (m->actionTimer == TIMER_CREDITS_PROGRESS && m->playerIndex == 0) {
+        if (m->actionTimer == TIMER_CREDITS_PROGRESS && is_local_player(m->playerIndex)) {
             reset_cutscene_msg_fade();
         }
 
-        if (m->actionTimer >= TIMER_CREDITS_PROGRESS && m->playerIndex == 0) {
+        if (m->actionTimer >= TIMER_CREDITS_PROGRESS && is_local_player(m->playerIndex)) {
             sDispCreditsEntry = gCurrCreditsEntry;
         }
 
-        if (m->actionTimer++ == TIMER_CREDITS_WARP && m->playerIndex == 0) {
+        if (m->actionTimer++ == TIMER_CREDITS_WARP && is_local_player(m->playerIndex)) {
             level_trigger_warp(m, WARP_OP_CREDITS_NEXT);
         }
 
@@ -3116,7 +3116,7 @@ static s32 act_end_waving_cutscene(struct MarioState *m) {
 
 static s32 check_for_instant_quicksand(struct MarioState *m) {
     if (!m) { return 0; }
-    if (m != &gMarioStates[0]) {
+    if (!mario_is_local(m)) {
         // never kill remote marios
         return FALSE;
     }

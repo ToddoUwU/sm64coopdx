@@ -97,7 +97,7 @@ void bhv_bowser_flame_spawn_loop(void) {
             o->oMoveAngleYaw = sp1C[5 * sp30 + 3] + (s16) bowser->oMoveAngleYaw;
             if (!(sp30 & 1)) {
                 struct MarioState* marioState = nearest_mario_state_to_object(o);
-                if (marioState && marioState->playerIndex == 0) {
+                if (marioState && is_local_player(marioState->playerIndex)) {
                     struct Object* flame = spawn_object(o, MODEL_RED_FLAME, bhvFlameMovingForwardGrowing);
                     if (flame != NULL) {
                         struct Object* spawn_objects[] = { flame };
@@ -148,7 +148,7 @@ s32 bowser_spawn_shockwave(void) {
     struct Object *wave;
     if (o->oBehParams2ndByte == 2) {
         struct MarioState* marioState = nearest_mario_state_to_object(o);
-        if (marioState && marioState->playerIndex == 0) {
+        if (marioState && is_local_player(marioState->playerIndex)) {
             wave = spawn_object(o, MODEL_BOWSER_WAVE, bhvBowserShockWave);
             if (wave != NULL) {
                 wave->oPosY = o->oFloorHeight;
@@ -258,7 +258,7 @@ void bowser_bitdw_act_controller(void) {
     if (!marioState) { return; }
     struct Object* player = marioState->marioObj;
     s32 distanceToPlayer = dist_between_objects(o, player);
-    if (marioState->playerIndex != 0) { return; }
+    if (!is_local_player(marioState->playerIndex)) { return; }
 
     f32 rand = random_float();
     if (o->oBowserUnk110 == 0) {
@@ -273,7 +273,7 @@ void bowser_bitdw_act_controller(void) {
     } else {
         o->oBowserUnk110 = 0;
 #ifndef VERSION_JP
-        if (!gCurrDemoInput && marioState->playerIndex == 0) {
+        if (!gCurrDemoInput && is_local_player(marioState->playerIndex)) {
             if (rand < 0.1)
                 o->oAction = 3; // rare 1/10 chance
             else
@@ -296,7 +296,7 @@ void bowser_bitfs_act_controller(void) {
     if (!marioState) { return; }
     struct Object* player = marioState->marioObj;
     s32 distanceToPlayer = dist_between_objects(o, player);
-    if (marioState->playerIndex != 0) { return; }
+    if (!is_local_player(marioState->playerIndex)) { return; }
 
     f32 rand = random_float();
     if (o->oBowserUnk110 == 0) {
@@ -329,7 +329,7 @@ void bowser_general_bits_act_controller(void) {
     if (!marioState) { return; }
     struct Object* player = marioState->marioObj;
     s32 distanceToPlayer = dist_between_objects(o, player);
-    if (marioState->playerIndex != 0) { return; }
+    if (!is_local_player(marioState->playerIndex)) { return; }
 
     f32 rand = random_float();
     if (o->oBowserUnkF4 & 2) {
@@ -356,7 +356,7 @@ void bowser_set_act_jump(void) {
 void bowser_bits_act_controller(void) {
     struct MarioState* marioState = nearest_mario_state_to_object(o);
     if (!marioState) { return; }
-    if (marioState->playerIndex != 0) { return; }
+    if (!is_local_player(marioState->playerIndex)) { return; }
     switch (o->oBowserUnk110) {
         case 0:
             if (o->oBowserUnk106 == 0)
@@ -501,7 +501,7 @@ void bowser_act_spit_fire_into_sky(void) // only in sky
     if (frame > 24 && frame < 36) {
         cur_obj_play_sound_1(SOUND_AIR_BOWSER_SPIT_FIRE);
         struct MarioState* marioState = nearest_mario_state_to_object(o);
-        if (marioState && marioState->playerIndex == 0) {
+        if (marioState && is_local_player(marioState->playerIndex)) {
             struct Object* flame = NULL;
             if (frame == 35) {
                 flame = spawn_object_relative(1, 0, 0x190, 0x64, o, MODEL_RED_FLAME, bhvBlueBowserFlame);

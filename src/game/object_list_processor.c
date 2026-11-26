@@ -16,6 +16,7 @@
 #include "object_collision.h"
 #include "object_helpers.h"
 #include "object_list_processor.h"
+#include "local_players.h"
 #include "obj_behaviors.h"
 #include "platform_displacement.h"
 #include "profiler.h"
@@ -256,13 +257,16 @@ void bhv_mario_update(void) {
     if (stateIndex >= MAX_PLAYERS || stateIndex < 0) { return; }
     gMarioState = &gMarioStates[stateIndex];
 
+    // a local Mario updates with its player in scope: its camera, HUD and dialogs are that player's
+    u8 previousLocalPlayer = local_player_scope_begin_mario(gMarioState);
+
     // sanity check torsoPos, it isn't updated off-screen otherwise
     extern u32 gGlobalTimer;
     if (gMarioState->marioBodyState && !gMarioState->marioBodyState->mirrorMario && gMarioState->marioBodyState->updateTorsoTime != (gGlobalTimer - 1)) {
         vec3f_copy(gMarioState->marioBodyState->torsoPos, gMarioState->pos);
     }
 
-    if ((stateIndex == 0) || (!is_player_active(gMarioState))) {
+    if (is_local_player(stateIndex) || (!is_player_active(gMarioState))) {
         gMarioState->particleFlags = 0;
     }
 
@@ -275,7 +279,7 @@ void bhv_mario_update(void) {
     particleFlags |= gMarioState->particleFlags;
     gCurrentObject->oMarioParticleFlags = particleFlags;
 
-    if (stateIndex == 0) { first_person_update(); }
+    if (is_local_player(stateIndex)) { first_person_update(); }
 
     // Mario code updates MarioState's versions of position etc, so we need
     // to sync it with the Mario object
@@ -292,6 +296,7 @@ void bhv_mario_update(void) {
     // reset mario state to the local player
     gInteractionInvulnerable = false;
     gMarioState = &gMarioStates[0];
+    local_player_scope_end(previousLocalPlayer);
 }
 
 /**

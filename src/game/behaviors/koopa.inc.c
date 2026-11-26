@@ -358,7 +358,7 @@ void shelled_koopa_attack_handler(s32 attackType) {
         cur_obj_set_model(smlua_model_util_load(E_MODEL_KOOPA_WITHOUT_SHELL));
 
         struct MarioState* marioState = nearest_mario_state_to_object(o);
-        if (marioState && marioState->playerIndex == 0) {
+        if (marioState && is_local_player(marioState->playerIndex)) {
             struct Object* shell = spawn_object(o, MODEL_KOOPA_SHELL, bhvKoopaShell);
             if (shell != NULL) {
                 sync_object_set_id(shell);
@@ -614,7 +614,7 @@ static void koopa_the_quick_act_wait_before_race(void) {
 
     if (o->oKoopaTheQuickInitTextboxCooldown != 0) {
         o->oKoopaTheQuickInitTextboxCooldown -= 1;
-    } else if (marioState == &gMarioStates[0] && cur_obj_can_mario_activate_textbox_2(&gMarioStates[0], 400.0f, 400.0f)) {
+    } else if (mario_is_local(marioState) && cur_obj_can_mario_activate_textbox_2(&gMarioStates[0], 400.0f, 400.0f)) {
         //! The next action doesn't execute until next frame, giving mario one
         //  frame where he can jump, and thus no longer be ready to speak.
         //  (On J, he has two frames and doing this enables time stop - see
@@ -847,7 +847,7 @@ static void koopa_the_quick_act_after_race(void) {
     if (!o->parentObj) { return; }
 
     if (o->parentObj->oKoopaRaceEndpointUnk100 == 0) {
-        if (marioState == &gMarioStates[0] && cur_obj_can_mario_activate_textbox_2(&gMarioStates[0], 400.0f, 400.0f)) {
+        if (mario_is_local(marioState) && cur_obj_can_mario_activate_textbox_2(&gMarioStates[0], 400.0f, 400.0f)) {
             stop_background_music(SEQUENCE_ARGS(4, SEQ_LEVEL_SLIDE));
 
             // Determine which text to display

@@ -3,7 +3,11 @@
 
 // this file is very scarcely documented
 
-extern s32 gRumblePakTimer;
+#include "local_players.h"
+
+// per local player; gRumblePakTimer is the timer of the player in scope
+extern s32 gRumblePakTimers[MAX_LOCAL_PLAYERS];
+#define gRumblePakTimer (gRumblePakTimers[gCurrLocalPlayer])
 
 void init_rumble_pak_scheduler_queue(void);
 void block_until_rumble_pak_free(void);

@@ -4,8 +4,11 @@
 #include "buffers/buffers.h"
 #include "main.h"
 #include "rumble_init.h"
+#include "local_players.h"
 #include "object_helpers.h"
 #include "pc/djui/djui.h"
+#include "pc/configfile.h"
+#include "pc/controller/controller_sdl.h"
 
 s8 D_SH_8031D8F8[0x60];
 
@@ -14,13 +17,17 @@ OSMesgQueue gRumblePakSchedulerMesgQueue;
 OSMesg gRumbleThreadVIMesgBuf[1];
 OSMesgQueue gRumbleThreadVIMesgQueue;
 
-struct RumbleData gRumbleDataQueue[3];
-struct StructSH8031D9B0 gCurrRumbleSettings;
+// Rumble state of each local player (split screen). The original names follow the player in scope, so rumble
+// queued while a Mario updates goes to that player's controller.
+static struct RumbleData sRumbleDataQueues[MAX_LOCAL_PLAYERS][3];
+static struct StructSH8031D9B0 sRumbleSettings[MAX_LOCAL_PLAYERS];
+s32 gRumblePakTimers[MAX_LOCAL_PLAYERS] = { 0 };
+#define gRumbleDataQueue    (sRumbleDataQueues[gCurrLocalPlayer])
+#define gCurrRumbleSettings (sRumbleSettings[gCurrLocalPlayer])
 
 s32 sRumblePakThreadActive = 0;
 s32 sRumblePakActive = 0;
 s32 sRumblePakErrorCount = 0;
-s32 gRumblePakTimer = 0;
 
 // These void* are OSPfs* but we don't have that header
 // And in general, it is not necessary =)
@@ -43,6 +50,14 @@ void release_rumble_pak_control(void) {
 }
 
 static void start_rumble(void) {
+    // players 2-4 rumble their own gamepads directly (same strength and duration as osMotorStart)
+    if (gCurrLocalPlayer != 0) {
+        if (configRumbleStrength) {
+            controller_sdl_rumble_local_player(gCurrLocalPlayer, configRumbleStrength / 100.0f, 5.0f);
+        }
+        return;
+    }
+
     if (!sRumblePakActive) {
         return;
     }
@@ -59,6 +74,13 @@ static void start_rumble(void) {
 }
 
 static void stop_rumble(void) {
+    if (gCurrLocalPlayer != 0) {
+        if (configRumbleStrength) {
+            controller_sdl_rumble_stop_local_player(gCurrLocalPlayer);
+        }
+        return;
+    }
+
     if (!sRumblePakActive) {
         return;
     }
@@ -151,18 +173,28 @@ void queue_rumble_data(s16 a0, s16 a1) {
     gRumbleDataQueue[2].unk04 = 0;
 }
 
-void queue_rumble_data_object(struct Object* object, s16 a0, s16 a1) {
-    extern struct MarioState gMarioStates[];
-    f32 dist = dist_between_objects(object, gMarioStates[0].marioObj);
+static void queue_rumble_data_object_for_scoped_player(struct Object* object, s16 a0, s16 a1) {
+    f32 dist = dist_between_objects(object, current_local_mario()->marioObj);
     if (dist > 5000) { return; }
     a0 = a0 * (1.0f - (dist / 5000.0f));
     a1 = a1 * (1.0f - (dist / 5000.0f));
     queue_rumble_data(a0, a1);
 }
 
+// every local player feels it, scaled by their own distance from the object
+void queue_rumble_data_object(struct Object* object, s16 a0, s16 a1) {
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        u8 previous = local_player_scope_begin(i);
+        queue_rumble_data_object_for_scoped_player(object, a0, a1);
+        local_player_scope_end(previous);
+    }
+}
+
 void queue_rumble_data_mario(struct MarioState* m, s16 a0, s16 a1) {
-    if (!m || m->playerIndex != 0) { return; }
+    if (!m || !is_local_player(m->playerIndex)) { return; }
+    u8 previous = local_player_scope_begin_mario(m);
     queue_rumble_data(a0, a1);
+    local_player_scope_end(previous);
 }
 
 void func_sh_8024C89C(s16 a0) {
@@ -190,11 +222,13 @@ u8 is_rumble_finished_and_queue_empty(void) {
 }
 
 void reset_rumble_timers(struct MarioState* m) {
-    if (!m || m->playerIndex != 0) { return; }
+    if (!m || !is_local_player(m->playerIndex)) { return; }
 
     if (gCurrDemoInput != NULL) {
         return;
     }
+
+    u8 previous = local_player_scope_begin_mario(m);
 
     if (gCurrRumbleSettings.unk0A == 0) {
         gCurrRumbleSettings.unk0A = 7;
@@ -205,14 +239,17 @@ void reset_rumble_timers(struct MarioState* m) {
     }
 
     gCurrRumbleSettings.unk0C = 7;
+    local_player_scope_end(previous);
 }
 
 void reset_rumble_timers_2(struct MarioState* m, s32 a0) {
-    if (!m || m->playerIndex != 0) { return; }
+    if (!m || !is_local_player(m->playerIndex)) { return; }
 
     if (gCurrDemoInput != NULL) {
         return;
     }
+
+    u8 previous = local_player_scope_begin_mario(m);
 
     if (gCurrRumbleSettings.unk0A == 0) {
         gCurrRumbleSettings.unk0A = 7;
@@ -241,6 +278,7 @@ void reset_rumble_timers_2(struct MarioState* m, s32 a0) {
     if (a0 == 0) {
         gCurrRumbleSettings.unk0C = 5;
     }
+    local_player_scope_end(previous);
 }
 
 void func_sh_8024CA04(void) {
@@ -256,9 +294,17 @@ void thread6_rumble_loop(UNUSED void *a0) {
     // OSMesg msg;
     // osRecvMesg(&gRumbleThreadVIMesgQueue, &msg, OS_MESG_BLOCK);
 
-    update_rumble_data_queue();
-    update_rumble_pak();
+    for (u8 i = 0; i < gLocalPlayerCount; i++) {
+        u8 previous = local_player_scope_begin(i);
+        update_rumble_data_queue();
+        update_rumble_pak();
+        if (gRumblePakTimer > 0) {
+            gRumblePakTimer--;
+        }
+        local_player_scope_end(previous);
+    }
 
+    // player 1's rumble pak (the other players' gamepads are driven directly)
     if (sRumblePakActive) {
         if (sRumblePakErrorCount >= 30) {
             sRumblePakActive = FALSE;
@@ -266,10 +312,6 @@ void thread6_rumble_loop(UNUSED void *a0) {
     } else if (gGlobalTimer % 60 == 0) {
         sRumblePakActive = osMotorInit(&gSIEventMesgQueue, &gRumblePakPfs, gPlayer1Controller->port) < 1;
         sRumblePakErrorCount = 0;
-    }
-
-    if (gRumblePakTimer > 0) {
-        gRumblePakTimer--;
     }
 }
 
@@ -280,14 +322,15 @@ void cancel_rumble(void) {
         osMotorStop(&gRumblePakPfs);
     }
 
-    gRumbleDataQueue[0].unk00 = 0;
-    gRumbleDataQueue[1].unk00 = 0;
-    gRumbleDataQueue[2].unk00 = 0;
-
-    gCurrRumbleSettings.unk04 = 0;
-    gCurrRumbleSettings.unk0A = 0;
-
-    gRumblePakTimer = 0;
+    for (u8 i = 0; i < MAX_LOCAL_PLAYERS; i++) {
+        sRumbleDataQueues[i][0].unk00 = 0;
+        sRumbleDataQueues[i][1].unk00 = 0;
+        sRumbleDataQueues[i][2].unk00 = 0;
+        sRumbleSettings[i].unk04 = 0;
+        sRumbleSettings[i].unk0A = 0;
+        gRumblePakTimers[i] = 0;
+        if (i != 0) { controller_sdl_rumble_stop_local_player(i); }
+    }
 }
 
 void create_thread_6(void) {

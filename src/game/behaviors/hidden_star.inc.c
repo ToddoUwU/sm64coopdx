@@ -45,7 +45,7 @@ void bhv_hidden_star_loop(void) {
             if (o->oTimer > 2) {
                 struct Object *obj = spawn_red_coin_cutscene_star(o->oPosX, o->oPosY, o->oPosZ);
                 if (obj != NULL) {
-                    if (o->oHiddenStarLastInteractedObject == &gMarioStates[0]) {
+                    if (mario_is_local(o->oHiddenStarLastInteractedObject)) {
                         obj->oStarSpawnExtCutsceneFlags = 1;
                     } else {
                         obj->oStarSpawnExtCutsceneFlags = 0;
@@ -110,7 +110,7 @@ void bhv_bowser_course_red_coin_star_loop(void) {
             if (o->oTimer > 2) {
                 struct Object *obj = spawn_no_exit_star(o->oPosX, o->oPosY, o->oPosZ);
                 if (obj != NULL) {
-                    if (o->oHiddenStarLastInteractedObject == &gMarioStates[0]) {
+                    if (mario_is_local(o->oHiddenStarLastInteractedObject)) {
                         obj->oStarSpawnExtCutsceneFlags = 1;
                     } else {
                         obj->oStarSpawnExtCutsceneFlags = 0;

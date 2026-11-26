@@ -124,7 +124,7 @@ static void enemy_lakitu_sub_act_no_spiny(void) {
     } else if (o->oEnemyLakituNumSpinies < 3 && distanceToPlayer < 800.0f
                && abs_angle_diff(angleToPlayer, o->oFaceAngleYaw) < 0x4000) {
 
-        if (marioState && marioState->playerIndex == 0) {
+        if (marioState && is_local_player(marioState->playerIndex)) {
             struct Object* spiny = spawn_object(o, MODEL_SPINY_BALL, bhvSpiny);
             if (spiny != NULL) {
                 o->prevObj = spiny;

@@ -142,7 +142,7 @@ static void camera_lakitu_intro_act_show_dialog(void) {
                 targetMoveYaw = angleToPlayer;
             } else {
                 if (lakituTargetLocalIndex == UNKNOWN_LOCAL_INDEX) {
-                    if (marioState && marioState->playerIndex == 0) {
+                    if (marioState && is_local_player(marioState->playerIndex)) {
                         lakituTargetLocalIndex = 0;
                     } else {
                         goto afterChase;

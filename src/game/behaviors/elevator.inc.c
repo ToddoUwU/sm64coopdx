@@ -36,7 +36,7 @@ void elevator_act_0(void) {
         }
     }
 
-    if (marioState && marioState->playerIndex == 0 && o->oAction != 0) { network_send_object(o); }
+    if (marioState && is_local_player(marioState->playerIndex) && o->oAction != 0) { network_send_object(o); }
 }
 
 void elevator_act_1(void) {
@@ -60,7 +60,7 @@ void elevator_act_1(void) {
         }
     }
 
-    if (marioState && marioState->playerIndex == 0 && o->oAction != 1) { network_send_object(o); }
+    if (marioState && is_local_player(marioState->playerIndex) && o->oAction != 1) { network_send_object(o); }
 }
 
 void elevator_act_2(void) { // Pretty similar code to action 1
@@ -87,7 +87,7 @@ void elevator_act_2(void) { // Pretty similar code to action 1
         }
     }
 
-    if (marioState && marioState->playerIndex == 0 && o->oAction != 2) { network_send_object(o); }
+    if (marioState && is_local_player(marioState->playerIndex) && o->oAction != 2) { network_send_object(o); }
 }
 
 void elevator_act_4(void) {
@@ -102,7 +102,7 @@ void elevator_act_4(void) {
         o->oAction = 1;
     }
 
-    if (marioState && marioState->playerIndex == 0 && o->oAction != 4) { network_send_object(o); }
+    if (marioState && is_local_player(marioState->playerIndex) && o->oAction != 4) { network_send_object(o); }
 }
 
 void elevator_act_3(void) // nearly identical to action 2
@@ -118,7 +118,7 @@ void elevator_act_3(void) // nearly identical to action 2
         o->oAction = 0;
     }
 
-    if (marioState && marioState->playerIndex == 0 && o->oAction != 3) { network_send_object(o); }
+    if (marioState && is_local_player(marioState->playerIndex) && o->oAction != 3) { network_send_object(o); }
 }
 
 void bhv_elevator_init(void) {

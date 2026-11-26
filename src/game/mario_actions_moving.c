@@ -323,7 +323,7 @@ s32 update_sliding(struct MarioState *m, f32 stopSpeed) {
 
     update_sliding_angle(m, accel, lossFactor);
 
-    if (m->playerIndex == 0 && !mario_floor_is_slope(m) && m->forwardVel * m->forwardVel < stopSpeed * stopSpeed) {
+    if (is_local_player(m->playerIndex) && !mario_floor_is_slope(m) && m->forwardVel * m->forwardVel < stopSpeed * stopSpeed) {
         mario_set_forward_vel(m, 0.0f);
         stopped = TRUE;
     }
@@ -1495,7 +1495,7 @@ s32 act_burning_ground(struct MarioState *m) {
     m->health -= 10;
     if (m->health < 0x100) {
         extern struct MarioState gMarioStates[];
-        if (m == &gMarioStates[0]) {
+        if (mario_is_local(m)) {
             // never kill remote marios
             set_mario_action(m, ACT_STANDING_DEATH, 0);
         }
@@ -1709,7 +1709,7 @@ s32 stomach_slide_action(struct MarioState *m, u32 stopAction, u32 airAction, s3
     }
 
     if (update_sliding(m, 4.0f)) {
-        if (m->playerIndex != 0) {
+        if (!is_local_player(m->playerIndex)) {
             m->input &= ~INPUT_ABOVE_SLIDE;
         }
         return set_mario_action(m, stopAction, 0);

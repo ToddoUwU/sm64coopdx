@@ -51,7 +51,7 @@ void bhv_flamethrower_loop(void) {
     UNUSED u8 pad[8];
     if (o->oAction == 0) {
         if (gCurrLevelNum != LEVEL_BBH || gMarioOnMerryGoRound == TRUE) {
-            if (marioState && marioState->playerIndex == 0 && distanceToPlayer < 2000.0f) {
+            if (marioState && is_local_player(marioState->playerIndex) && distanceToPlayer < 2000.0f) {
                 o->oAction++;
                 network_send_object(o);
             }

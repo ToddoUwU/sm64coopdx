@@ -138,7 +138,7 @@ void bhv_bookend_spawn_loop(void) {
     if (!sync_object_is_initialized(o->oSyncID)) { sync_object_init(o, SYNC_DISTANCE_ONLY_EVENTS); }
 
     struct MarioState* marioState = nearest_mario_state_to_object(o);
-    if (marioState && marioState->playerIndex != 0) { return; }
+    if (marioState && !is_local_player(marioState->playerIndex)) { return; }
 
     struct Object* book;
 

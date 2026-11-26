@@ -758,7 +758,7 @@ s32 act_grabbed(struct MarioState *m) {
     set_character_animation(m, CHAR_ANIM_BEING_GRABBED);
 
     // check if they should still be grabbed
-    if (m->playerIndex == 0) {
+    if (is_local_player(m->playerIndex)) {
         // check if the object holding me is being held
         u8 heldObjIsHeld = FALSE;
         if (m->heldByObj != NULL) {
@@ -841,7 +841,7 @@ s32 act_in_cannon(struct MarioState *m) {
                 m->faceAngle[1] = marioObj->oMarioCannonObjectYaw + marioObj->oMarioCannonInputYaw;
 
                 extern struct MarioState gMarioStates[];
-                if (m->input & INPUT_A_PRESSED && m == &gMarioStates[0]) {
+                if (m->input & INPUT_A_PRESSED && mario_is_local(m)) {
                     m->forwardVel = 100.0f * coss(m->faceAngle[0]);
 
                     m->vel[1] = 100.0f * sins(m->faceAngle[0]);
@@ -1041,7 +1041,7 @@ void mario_pop_bubble(struct MarioState* m) {
     m->vel[1] = 0.0f;
     m->marioObj->header.gfx.node.flags &= ~GRAPH_RENDER_INVISIBLE;
     m->invincTimer = 30 * 3;
-    if (m->playerIndex == 0) {
+    if (is_local_player(m->playerIndex)) {
         if (m->statusForCamera) { m->statusForCamera->action = m->action; }
         soft_reset_camera(mario_area_camera(m));
     }
@@ -1051,7 +1051,7 @@ void mario_pop_bubble(struct MarioState* m) {
 
 s32 act_bubbled(struct MarioState* m) {
     if (!m) { return 0; }
-    if (m->playerIndex == 0 && mario_area_camera(m)->mode == CAMERA_MODE_WATER_SURFACE) {
+    if (is_local_player(m->playerIndex) && mario_area_camera(m)->mode == CAMERA_MODE_WATER_SURFACE) {
         set_camera_mode(mario_area_camera(m), CAMERA_MODE_FREE_ROAM, 1);
     }
     struct MarioState* targetMarioState = nearest_antibubble_mario_state_to_object(m->marioObj);
@@ -1065,7 +1065,7 @@ s32 act_bubbled(struct MarioState* m) {
     s32 distanceToPlayer = dist_between_objects(m->marioObj, target);
 
     // trigger warp if all are bubbled
-    if (m->playerIndex == 0) {
+    if (is_local_player(m->playerIndex)) {
         u8 allInBubble = TRUE;
         for (s32 i = 0; i < MAX_PLAYERS; i++) {
             if (!is_player_active(&gMarioStates[i])) { continue; }
@@ -1145,7 +1145,7 @@ s32 act_bubbled(struct MarioState* m) {
     bubbled_offset_visual(m);
 
     // make invisible on -1 lives
-    if (m->playerIndex == 0) {
+    if (is_local_player(m->playerIndex)) {
         if (m->numLives <= -1) {
             m->marioObj->header.gfx.node.flags |= GRAPH_RENDER_INVISIBLE;
             level_trigger_warp(m, WARP_OP_DEATH);
@@ -1158,7 +1158,7 @@ s32 act_bubbled(struct MarioState* m) {
     if (gLocalBubbleCounter > 0) { gLocalBubbleCounter--; }
 
     // pop bubble
-    if (m->playerIndex == 0 && distanceToPlayer < 120 && is_player_active(targetMarioState) && m->numLives != -1 && gLocalBubbleCounter == 0) {
+    if (is_local_player(m->playerIndex) && distanceToPlayer < 120 && is_player_active(targetMarioState) && m->numLives != -1 && gLocalBubbleCounter == 0) {
         mario_pop_bubble(m);
         return TRUE;
     }

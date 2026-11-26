@@ -136,7 +136,7 @@ void bhv_snowmans_bottom_loop(void) {
     switch (o->oAction) {
         case 0:
             if (marioState
-                && marioState->playerIndex == 0
+                && is_local_player(marioState->playerIndex)
                 && should_start_or_continue_dialog(marioState, o)
                 && (is_point_within_radius_of_mario(o->oPosX, o->oPosY, o->oPosZ, 400) == 1)
                 && set_mario_npc_dialog(&gMarioStates[0], 1, bhv_snowmans_bottom_loop_continue_dialog)

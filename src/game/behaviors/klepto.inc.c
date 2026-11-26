@@ -288,7 +288,7 @@ static void klepto_act_dive_at_mario(void) {
                 && marioState->action != ACT_SLEEPING
                 && !(marioState->action & (ACT_FLAG_SHORT_HITBOX | ACT_FLAG_BUTT_OR_STOMACH_SLIDE))
                 && distanceToPlayer < 200.0f && dy > 50.0f && dy < 90.0f) {
-                if (sync_object_is_owned_locally(o->oSyncID) && mario_lose_cap_to_enemy(marioState, 1) && marioState->playerIndex == 0) {
+                if (sync_object_is_owned_locally(o->oSyncID) && mario_lose_cap_to_enemy(marioState, 1) && is_local_player(marioState->playerIndex)) {
                     o->oAnimState = KLEPTO_ANIM_STATE_HOLDING_CAP;
                     o->globalPlayerIndex = gNetworkPlayers[marioState->playerIndex].globalIndex;
                     network_send_object(o);
@@ -435,7 +435,7 @@ void bhv_klepto_update(void) {
 
                 // If we're not the closet to Klepto,
                 // Don't play the cutscene!
-                if (star != NULL && marioState != &gMarioStates[0]) {
+                if (star != NULL && !mario_is_local(marioState)) {
                     star->oStarSpawnExtCutsceneFlags = 0;
                 }
             }

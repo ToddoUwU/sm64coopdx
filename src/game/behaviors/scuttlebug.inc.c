@@ -149,7 +149,7 @@ void bhv_scuttlebug_spawn_loop(void) {
     }
 
     struct MarioState* marioState = nearest_mario_state_to_object(o);
-    if (marioState && marioState->playerIndex != 0) { return; }
+    if (marioState && !is_local_player(marioState->playerIndex)) { return; }
 
     struct Object* player = marioState ? marioState->marioObj : NULL;
     s32 distanceToPlayer = player ? dist_between_objects(o, player) : 10000;

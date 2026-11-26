@@ -549,7 +549,7 @@ static u8 cage_ukiki_held_default_continue_dialog(void) {
 void cage_ukiki_held_loop(void) {
     if (o->heldByPlayerIndex >= MAX_PLAYERS) { return; }
     struct MarioState* heldByMario = &gMarioStates[o->heldByPlayerIndex];
-    if (heldByMario->playerIndex != 0) { return; }
+    if (!is_local_player(heldByMario->playerIndex)) { return; }
 
     if (o->oPosY - o->oHomeY > -100.0f) {
         switch(o->oUkikiTextState) {
@@ -601,7 +601,7 @@ u8 hat_ukiki_held_loop_2(void) { return o->oHeldState == HELD_HELD && o->oUkikiT
 void cap_ukiki_held_loop(void) {
     if (o->heldByPlayerIndex >= MAX_PLAYERS) { return; }
     struct MarioState* heldByMario = &gMarioStates[o->heldByPlayerIndex];
-    if (heldByMario->playerIndex != 0) { return; }
+    if (!is_local_player(heldByMario->playerIndex)) { return; }
 
     // other player must catch ukiki
     if ((o->oUkikiHasCap & UKIKI_CAP_ON) && does_mario_have_normal_cap_on_head(heldByMario)) {

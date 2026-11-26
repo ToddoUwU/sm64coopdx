@@ -184,7 +184,7 @@ void mr_i_act_2(void) {
         if (o->oMrIUnk104 == o->oMrIUnk108)
             o->oMrIUnk110 = 1;
         if (o->oMrIUnk104 == o->oMrIUnk108 + 20) {
-            if (marioState && marioState->playerIndex == 0) {
+            if (marioState && is_local_player(marioState->playerIndex)) {
                 spawn_mr_i_particle();
             }
             o->oMrIUnk104 = 0;
@@ -221,7 +221,7 @@ void mr_i_act_1(void) {
     }
     if (sp1C < 1024 && sp1A > 0x4000) {
         if (distanceToPlayer < 700.0f) {
-            if (marioState && marioState->playerIndex == 0) {
+            if (marioState && is_local_player(marioState->playerIndex)) {
                 o->oAction = 2;
                 network_send_object(o);
             }
@@ -237,7 +237,7 @@ void mr_i_act_1(void) {
     if (o->oMrIUnk108 + 80 < o->oMrIUnk104) {
         o->oMrIUnk104 = 0;
         o->oMrIUnk108 = random_float() * 80.0f;
-        if (marioState && marioState->playerIndex == 0) {
+        if (marioState && is_local_player(marioState->playerIndex)) {
             spawn_mr_i_particle();
         }
     }

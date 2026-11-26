@@ -121,7 +121,7 @@ s32 check_fall_damage(struct MarioState *m, u32 hardFallAction) {
             if (fallHeight > 3000.0f) {
                 m->hurtCounter += (m->flags & MARIO_CAP_ON_HEAD) ? 16 : 24;
                 queue_rumble_data_mario(m, 5, 80);
-                if (m->playerIndex == 0) { set_camera_shake_from_hit(SHAKE_FALL_DAMAGE); }
+                if (is_local_player(m->playerIndex)) { set_camera_shake_from_hit(SHAKE_FALL_DAMAGE); }
                 play_character_sound(m, CHAR_SOUND_ATTACKED);
                 return drop_and_set_mario_action(m, hardFallAction, 4);
             } else if (fallHeight > damageHeight && !mario_floor_is_slippery(m)) {
@@ -129,7 +129,7 @@ s32 check_fall_damage(struct MarioState *m, u32 hardFallAction) {
                 m->squishTimer = 30;
 
                 queue_rumble_data_mario(m, 5, 80);
-                if (m->playerIndex == 0) { set_camera_shake_from_hit(SHAKE_FALL_DAMAGE); }
+                if (is_local_player(m->playerIndex)) { set_camera_shake_from_hit(SHAKE_FALL_DAMAGE); }
                 play_character_sound(m, CHAR_SOUND_ATTACKED);
             }
         }
@@ -586,7 +586,7 @@ s32 act_double_jump(struct MarioState *m) {
 
 s32 act_triple_jump(struct MarioState *m) {
     if (!m) { return 0; }
-    if (m == &gMarioStates[0] && m->specialTripleJump) {
+    if (mario_is_local(m) && m->specialTripleJump) {
         return set_mario_action(m, ACT_SPECIAL_TRIPLE_JUMP, 0);
     }
 
@@ -950,7 +950,7 @@ s32 act_water_jump(struct MarioState *m) {
     switch (perform_air_step(m, AIR_STEP_CHECK_LEDGE_GRAB)) {
         case AIR_STEP_LANDED:
             set_mario_action(m, ACT_JUMP_LAND, 0);
-            if (m->playerIndex == 0) { set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1); }
+            if (is_local_player(m->playerIndex)) { set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1); }
             break;
 
         case AIR_STEP_HIT_WALL:
@@ -962,7 +962,7 @@ s32 act_water_jump(struct MarioState *m) {
             set_character_animation(m, CHAR_ANIM_IDLE_ON_LEDGE);
 #endif
             set_mario_action(m, ACT_LEDGE_GRAB, 0);
-            if (m->playerIndex == 0) { set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1); }
+            if (is_local_player(m->playerIndex)) { set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1); }
             break;
 
         case AIR_STEP_HIT_LAVA_WALL:
@@ -989,7 +989,7 @@ s32 act_hold_water_jump(struct MarioState *m) {
     switch (perform_air_step(m, 0)) {
         case AIR_STEP_LANDED:
             set_mario_action(m, ACT_HOLD_JUMP_LAND, 0);
-            if (m->playerIndex == 0) { set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1); }
+            if (is_local_player(m->playerIndex)) { set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1); }
             break;
 
         case AIR_STEP_HIT_WALL:
@@ -1087,7 +1087,7 @@ s32 act_ground_pound(struct MarioState *m) {
                     set_mario_action(m, ACT_GROUND_POUND_LAND, 0);
                 }
             }
-            if (m->playerIndex == 0) { set_camera_shake_from_hit(SHAKE_GROUND_POUND); }
+            if (is_local_player(m->playerIndex)) { set_camera_shake_from_hit(SHAKE_GROUND_POUND); }
         } else if (stepResult == AIR_STEP_HIT_WALL) {
             if (gLevelValues.fixCollisionBugs && gLevelValues.fixCollisionBugsGroundPoundBonks) {
                 // do nothing
@@ -1124,7 +1124,7 @@ s32 act_burning_jump(struct MarioState *m) {
 
     m->health -= 10;
     if (m->health < 0x100) {
-        if (m != &gMarioStates[0]) {
+        if (!mario_is_local(m)) {
             // never kill remote marios
             m->health = 0x100;
         } else {
@@ -1151,7 +1151,7 @@ s32 act_burning_fall(struct MarioState *m) {
 
     m->health -= 10;
     if (m->health < 0x100) {
-        if (m != &gMarioStates[0]) {
+        if (!mario_is_local(m)) {
             // never kill remote marios
             m->health = 0x100;
         } else {
@@ -1205,7 +1205,7 @@ s32 act_crazy_box_bounce(struct MarioState *m) {
             if (m->actionArg < 2) {
                 set_mario_action(m, ACT_CRAZY_BOX_BOUNCE, m->actionArg + 1);
             } else {
-                if (m->heldObj != NULL && m->playerIndex == 0) {
+                if (m->heldObj != NULL && is_local_player(m->playerIndex)) {
                     m->heldObj->oInteractStatus = INT_STATUS_STOP_RIDING;
                     m->heldObj = NULL;
                 }
@@ -1723,7 +1723,7 @@ s32 act_lava_boost(struct MarioState *m) {
     }
 
     if (m->health < 0x100) {
-        if (m != &gMarioStates[0]) {
+        if (!mario_is_local(m)) {
             // never kill remote marios
             m->health = 0x100;
         } else {
@@ -1843,7 +1843,7 @@ s32 act_jump_kick(struct MarioState *m) {
 s32 act_shot_from_cannon(struct MarioState *m) {
     if (!m) { return 0; }
     // only allow for local player
-    u8 allowCameraChange = (m->playerIndex == 0);
+    u8 allowCameraChange = (is_local_player(m->playerIndex));
 
     if (allowCameraChange && mario_area_camera(m)->mode != CAMERA_MODE_BEHIND_MARIO) {
         m->statusForCamera->cameraEvent = CAM_EVENT_SHOT_FROM_CANNON;
@@ -1921,7 +1921,7 @@ s32 act_flying(struct MarioState *m) {
 
     if (m->input & INPUT_Z_PRESSED) {
         if (mario_area_camera(m)->mode == CAMERA_MODE_BEHIND_MARIO) {
-            if (m->playerIndex == 0) {
+            if (is_local_player(m->playerIndex)) {
                 if (!gNewCamera.isActive) {
                     set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
                 } else {
@@ -1935,7 +1935,7 @@ s32 act_flying(struct MarioState *m) {
 
     if (!(m->flags & MARIO_WING_CAP)) {
         if (mario_area_camera(m)->mode == CAMERA_MODE_BEHIND_MARIO) {
-            if (m->playerIndex == 0) {
+            if (is_local_player(m->playerIndex)) {
                 if (!gNewCamera.isActive) {
                     set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
                 } else {
@@ -1948,7 +1948,7 @@ s32 act_flying(struct MarioState *m) {
     }
 
     if (mario_area_camera(m)->mode != CAMERA_MODE_BEHIND_MARIO) {
-        if (m->playerIndex == 0) {
+        if (is_local_player(m->playerIndex)) {
             if (!gNewCamera.isActive) {
                 set_camera_mode(mario_area_camera(m), CAMERA_MODE_BEHIND_MARIO, 1);
                 // note: EX sets it to the following line instead, but I have
@@ -1973,7 +1973,7 @@ s32 act_flying(struct MarioState *m) {
 
         if (is_anim_at_end(m)) {
             if (m->actionArg == 2) {
-                if (m == &gMarioStates[0]) {
+                if (mario_is_local(m)) {
                     load_level_init_text(0);
                 }
                 m->actionArg = 1;
@@ -2001,7 +2001,7 @@ s32 act_flying(struct MarioState *m) {
 
             m->faceAngle[0] = 0;
 
-            if (m->playerIndex == 0) {
+            if (is_local_player(m->playerIndex)) {
                 if (!gNewCamera.isActive) {
                     set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
                 } else {
@@ -2028,7 +2028,7 @@ s32 act_flying(struct MarioState *m) {
                 set_mario_particle_flags(m, PARTICLE_VERTICAL_STAR, FALSE);
                 set_mario_action(m, ACT_BACKWARD_AIR_KB, 0);
 
-                if (m->playerIndex == 0) {
+                if (is_local_player(m->playerIndex)) {
                     if (!gNewCamera.isActive) {
                         set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
                     } else {
@@ -2120,7 +2120,7 @@ s32 act_flying_triple_jump(struct MarioState *m) {
     if (!m) { return 0; }
 #ifndef VERSION_JP
     if (m->input & (INPUT_B_PRESSED | INPUT_Z_PRESSED)) {
-        if (m->playerIndex == 0 && mario_area_camera(m)->mode == CAMERA_MODE_BEHIND_MARIO) {
+        if (is_local_player(m->playerIndex) && mario_area_camera(m)->mode == CAMERA_MODE_BEHIND_MARIO) {
             if (!gNewCamera.isActive) {
                 set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
             } else {
@@ -2164,7 +2164,7 @@ s32 act_flying_triple_jump(struct MarioState *m) {
     }
 
     if (m->vel[1] < 4.0f) {
-        if (m->playerIndex == 0 && mario_area_camera(m)->mode != CAMERA_MODE_BEHIND_MARIO) {
+        if (is_local_player(m->playerIndex) && mario_area_camera(m)->mode != CAMERA_MODE_BEHIND_MARIO) {
             if (!gNewCamera.isActive) {
                 set_camera_mode(mario_area_camera(m), mario_area_camera(m)->defMode, 1);
             } else {

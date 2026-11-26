@@ -507,7 +507,7 @@ static void boo_act_4(void) {
 
     struct MarioState* marioState = nearest_mario_state_to_object(o);
     if (marioState) {
-        if (marioState->playerIndex != 0 || cur_obj_update_dialog(&gMarioStates[0], 2, 2, dialogID, 0, boo_act_4_continue_dialog)) {
+        if (!is_local_player(marioState->playerIndex) || cur_obj_update_dialog(&gMarioStates[0], 2, 2, dialogID, 0, boo_act_4_continue_dialog)) {
             create_sound_spawner(SOUND_OBJ_DYING_ENEMY1);
             obj_mark_for_deletion(o);
 
