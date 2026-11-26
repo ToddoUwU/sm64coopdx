@@ -4,6 +4,7 @@
 #include "djui_panel_menu.h"
 #include "djui_panel_host_mods.h"
 #include "djui_panel_host_settings.h"
+#include "game/local_players.h"
 #include "djui_panel_host_save.h"
 #include "djui_panel_host_message.h"
 #include "djui_panel_rules.h"
@@ -86,6 +87,13 @@ static void djui_panel_host_do_host(struct DjuiBase* caller) {
     } else {
         djui_panel_host_message_create(caller);
     }
+}
+
+// index into the "Local Players" choices (count - 1)
+static unsigned int sLocalPlayersChoice = 0;
+
+static void djui_panel_host_local_players_change(UNUSED struct DjuiBase* base) {
+    configSplitscreenPlayers = sLocalPlayersChoice + 1;
 }
 
 void djui_panel_host_create(struct DjuiBase* caller) {
@@ -179,6 +187,17 @@ void djui_panel_host_create(struct DjuiBase* caller) {
             struct DjuiButton* button1 = djui_button_create(&rect2->base, starString, DJUI_BUTTON_STYLE_NORMAL, djui_panel_host_save_create);
             djui_base_set_size(&button1->base, 0.45f, 32);
             djui_base_set_alignment(&button1->base, DJUI_HALIGN_RIGHT, DJUI_VALIGN_TOP);
+        }
+
+        // players on this PC (split screen); fixed while the session runs
+        {
+            static char *sLocalPlayerChoices[MAX_LOCAL_PLAYERS] = { "1", "2", "3", "4" };
+            sLocalPlayersChoice = local_players_requested_count() - 1;
+            struct DjuiSelectionbox *localPlayers = djui_selectionbox_create(body, DLANG(HOST, LOCAL_PLAYERS), sLocalPlayerChoices,
+                                                                             MAX_LOCAL_PLAYERS, &sLocalPlayersChoice, djui_panel_host_local_players_change);
+            if (gNetworkType == NT_SERVER) {
+                djui_base_set_enabled(&localPlayers->base, false);
+            }
         }
 
         djui_button_create(body, DLANG(HOST, SETTINGS), DJUI_BUTTON_STYLE_NORMAL, djui_panel_host_settings_create);
